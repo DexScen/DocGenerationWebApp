@@ -1,0 +1,56 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: ./backend/Dockerfile
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./backend/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - go-mod:/go/pkg/mod #mb out
+    networks:
+      - app-network
+  postgres:
+    build: ./PostgreSQL
+    container_name: my_postgres
+    restart: always
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: qwerty123
+      POSTGRES_DB: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    # frontend:
+    #   build:
+    #     context: ./frontend
+    #   depends_on:
+    #     - backend
+    #   ports:
+    #     - "81:80"
+    #   volumes:
+    #     - ./frontend:/usr/share/nginx/html   
+    #   networks:
+    # - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  go-mod: #?
+  frontend:

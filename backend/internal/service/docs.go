@@ -17,6 +17,9 @@ type DocsRepository interface {
 	GetLeadersByOrgID(ctx context.Context, org_id int) ([]domain.Leader, error)
 	PostLeaderByOrgID(ctx context.Context, leader domain.Leader, org_id int) error
 	DeleteLeaderByID(ctx context.Context, id int) error
+
+	GetAllInspectionsForHistory(ctx context.Context) ([]domain.InspectionHistoryItem, error)
+	GetInspectionByID(ctx context.Context, id int) (domain.Inspection, error)
 }
 
 type Docs struct {
@@ -63,4 +66,12 @@ func (d *Docs) DeleteLeaderByID(ctx context.Context, id int) error{
 
 func (d *Docs) PutOrganizationByID(ctx context.Context, org domain.Organization, org_id int) error{
 	return d.repo.PutOrganizationByID(ctx, org, org_id)
+}
+
+func (d *Docs) GetAllInspectionsForHistory(ctx context.Context) ([]domain.InspectionHistoryItem, error){
+	return d.repo.GetAllInspectionsForHistory(ctx)
+}
+
+func (d *Docs) GetInspectionByID(ctx context.Context, id int) (domain.Inspection, error) {
+	return d.repo.GetInspectionByID(ctx, id)
 }

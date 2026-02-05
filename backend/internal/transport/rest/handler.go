@@ -22,6 +22,9 @@ type Docs interface {
 	GetLeadersByOrgID(ctx context.Context, org_id int) ([]domain.Leader, error)
 	PostLeaderByOrgID(ctx context.Context, leader domain.Leader, org_id int) error
 	DeleteLeaderByID(ctx context.Context, id int) error
+
+	GetAllInspectionsForHistory(ctx context.Context) ([]domain.InspectionHistoryItem, error)
+	GetInspectionByID(ctx context.Context, id int) (domain.Inspection, error)
 }
 
 type Handler struct {
@@ -49,6 +52,9 @@ func (h *Handler) InitRouter() *mux.Router {
 		links.HandleFunc("/leaders/{id}", h.DeleteLeaderByID).Methods(http.MethodDelete)
 		links.HandleFunc("/leaders/{id}", h.GetLeadersByOrgID).Methods(http.MethodGet) // ORG_ID а не leaderID
 		links.HandleFunc("/leaders/{id}", h.PostLeaderByOrgID).Methods(http.MethodPost)
+
+		links.HandleFunc("/inspections", h.GetAllInspectionsForHistory).Methods(http.MethodGet)
+		links.HandleFunc("/inspections/{id}", h.GetInspectionByID).Methods(http.MethodGet)
 	}
 	return r
 }
@@ -217,4 +223,51 @@ func (h *Handler) PutOrganizationByID(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+}
+
+func (h *Handler) GetAllInspectionsForHistory(w http.ResponseWriter, r *http.Request){
+	list, err := h.docsService.GetAllInspectionsForHistory(context.TODO())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Println("GetAllInspectionsForHistory error:", err)
+		return
+	}
+
+	if jsonResp, err := json.Marshal(list); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Println("GetAllInspectionsForHistory error:", err)
+		return
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(jsonResp)
+	}
+}
+
+func (h *Handler) GetInspectionByID(w http.ResponseWriter, r *http.Request){
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Println("GetInspectionByID error:", err)
+		return
+	}
+
+	inspection, err := h.docsService.GetInspectionByID(context.TODO(), id)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Println("GetInspectionByID error:", err)
+		return
+	}
+
+	if jsonResp, err := json.Marshal(inspection); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Println("GetInspectionByID error:", err)
+		return
+	} else {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(jsonResp)
+	}
 }
