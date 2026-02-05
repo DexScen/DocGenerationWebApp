@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Проверки — Web</title>
+
+  <link rel="stylesheet" href="./assets/css/base.css" />
+  <link rel="stylesheet" href="./assets/css/layout.css" />
+  <link rel="stylesheet" href="./assets/css/components.css" />
+  <link rel="stylesheet" href="./assets/css/modal.css" />
+</head>
+
+<body>
+  <div class="app">
+    <!-- Sidebar -->    
+    <aside class="sidebar" aria-label="Навигация">
+      <div class="sidebar__brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <div class="brand__title">Проверки</div>
+          <div class="brand__subtitle">web-прототип</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <a class="nav__item" href="#/home" data-route="home">
+          <span class="nav__dot" aria-hidden="true"></span>
+          Главная
+        </a>
+
+        <a class="nav__item" href="#/orgs" data-route="orgs">
+          <span class="nav__dot" aria-hidden="true"></span>
+          Организации
+        </a>
+
+        <a class="nav__item" href="#/checks" data-route="checks">
+          <span class="nav__dot" aria-hidden="true"></span>
+          Проверки
+        </a>
+
+        <a class="nav__item" href="#/settings" data-route="settings">
+          <span class="nav__dot" aria-hidden="true"></span>
+          Настройки
+        </a>
+      </nav>
+
+      <div class="sidebar__footer">
+        <div class="muted">v0.1 • UI scaffold</div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar__left">
+          <h1 class="page-title" id="pageTitle">Главная</h1>
+          <div class="page-subtitle" id="pageSubtitle">Быстрые действия</div>
+        </div>
+
+        <div class="topbar__right">
+          <button class="btn btn--ghost" id="btnHelp" type="button">Справка</button>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <!-- HOME -->
+        <div class="page" id="page-home" data-page="home">
+          <div class="home-layout">
+            <div class="home-actions">
+              <button class="action-tile" id="btnNewCheck" type="button">
+                <div class="action-tile__title">Новая проверка</div>
+                <div class="action-tile__desc">Создать новую запись проверки</div>
+              </button>
+
+              <button class="action-tile" id="btnChecks" type="button">
+                <div class="action-tile__title">Проверки</div>
+                <div class="action-tile__desc">Открыть список проверок</div>
+              </button>
+            </div>
+
+            <div class="home-canvas" aria-label="Пустое рабочее поле">
+            </div>
+          </div>
+        </div>
+
+        <!-- ORGS -->
+        <div class="page" id="page-orgs" data-page="orgs" hidden>
+          <div class="placeholder">
+            <div class="placeholder__title">Организации</div>
+            <div class="placeholder__text">Пока пусто.</div>
+          </div>
+        </div>
+
+        <!-- CHECKS -->
+        <div class="page" id="page-checks" data-page="checks" hidden>
+          <div class="placeholder">
+            <div class="placeholder__title">Проверки</div>
+            <div class="placeholder__text">Пока пусто.</div>
+          </div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div class="page" id="page-settings" data-page="settings" hidden>
+          <div class="placeholder">
+            <div class="placeholder__title">Настройки</div>
+            <div class="placeholder__text">Пока пусто.</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="dialog-backdrop" id="dialogBackdrop" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+      <div class="dialog__head">
+        <div class="dialog__title" id="dialogTitle">Сообщение</div>
+        <button class="icon-btn" id="dialogClose" type="button" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="dialog__body" id="dialogBody"></div>
+      <div class="dialog__actions">
+        <button class="btn btn--primary" id="dialogOk" type="button">ОК</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Новая проверка -->
+<div class="modal-backdrop" id="checkModalBackdrop" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="checkModalTitle">
+    <div class="modal__head">
+      <div class="modal__title" id="checkModalTitle">Новая проверка</div>
+      <button class="icon-btn" id="checkModalClose" type="button" aria-label="Закрыть">✕</button>
+    </div>
+
+    <form class="modal__body" id="checkForm">
+      <!-- Общие сведения -->
+      <section class="form-section">
+        <div class="form-section__title">Общие сведения об организации</div>
+
+        <div class="grid-2">
+          <label class="field">
+            <span class="field__label">ОГРН</span>
+            <input class="input" name="ogrn" inputmode="numeric" placeholder="" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Форма организации</span>
+            <select class="input" name="orgForm">
+              <option value="" selected>—</option>
+              <option>государственное бюджетное учреждение</option>
+              <option>ООО</option>
+              <option>АО</option>
+              <option>ИП</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="field">
+          <span class="field__label">Наименование</span>
+          <input class="input" name="orgName" placeholder="" />
+        </label>
+
+        <label class="field">
+          <span class="field__label">Сокращенное наименование</span>
+          <input class="input" name="orgShortName" placeholder="" />
+        </label>
+      </section>
+
+      <!-- Адрес -->
+      <section class="form-section">
+        <div class="form-section__title">Адрес организации</div>
+
+        <div class="grid-3">
+          <label class="field">
+            <span class="field__label">Индекс</span>
+            <input class="input" name="index" inputmode="numeric" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Район</span>
+            <input class="input" name="district" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Населенный пункт</span>
+            <div class="field-inline">
+              <span class="prefix">г.</span>
+              <input class="input" name="city" />
+            </div>
+          </label>
+        </div>
+
+        <div class="grid-2">
+          <label class="field">
+            <span class="field__label">Улица</span>
+            <div class="field-inline">
+              <span class="prefix">ул.</span>
+              <input class="input" name="street" />
+            </div>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Дом, строение, корпус</span>
+            <div class="field-inline">
+              <span class="prefix">д.</span>
+              <input class="input" name="house" />
+            </div>
+          </label>
+        </div>
+      </section>
+
+      <!-- Руководитель -->
+      <section class="form-section">
+        <div class="form-section__title">Сведения о руководителе</div>
+
+        <div class="grid-4">
+          <label class="field">
+            <span class="field__label">Должность</span>
+            <select class="input" name="bossRole">
+              <option value="" selected>—</option>
+              <option>главный врач</option>
+              <option>директор</option>
+              <option>руководитель</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Имя Отчество</span>
+            <input class="input" name="bossNamePatronymic" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Фамилия</span>
+            <input class="input" name="bossLastName" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Фамилия (кому?)</span>
+            <input class="input" name="bossLastNameTo" />
+          </label>
+        </div>
+      </section>
+
+      <!-- Проверка -->
+      <section class="form-section">
+        <div class="form-section__title">Сведения о проверке</div>
+
+        <div class="grid-4">
+          <label class="field">
+            <span class="field__label">Форма проверки</span>
+            <select class="input" name="checkFormType">
+              <option value="" selected>—</option>
+              <option>плановая документарная</option>
+              <option>плановая выездная</option>
+              <option>внеплановая документарная</option>
+              <option>внеплановая выездная</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field__label">№ приказа МЗЧО</span>
+            <input class="input" name="mzOrderNo" value="845" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Дата приказа МЗЧО</span>
+            <input class="input" name="mzOrderDate" type="date" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">№ проверки</span>
+            <input class="input" name="checkNo" inputmode="numeric" />
+          </label>
+        </div>
+
+        <div class="grid-4">
+          <label class="field">
+            <span class="field__label">Начало проверки</span>
+            <input class="input" name="startDate" type="date" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Окончание проверки</span>
+            <input class="input" name="endDate" type="date" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Дней</span>
+            <input class="input" name="days" inputmode="numeric" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">№ приказа, письма</span>
+            <div class="grid-2-tight">
+              <input class="input" name="letterNoLeft" placeholder="о/д" />
+              <input class="input" name="letterNoRight" placeholder="" />
+            </div>
+          </label>
+        </div>
+
+        <div class="grid-2">
+          <label class="field">
+            <span class="field__label">Дата приказа, письма</span>
+            <input class="input" name="letterDate" type="date" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">По адресу(ам) без индекса</span>
+            <input class="input" name="addressNoIndex" />
+          </label>
+        </div>
+
+        <label class="field">
+          <span class="field__label">Представитель (ФИО, должность)</span>
+          <input class="input" name="representative" />
+        </label>
+
+        <div class="grid-2 actions-right">
+          <label class="field">
+            <span class="field__label">Уполномоченные на проведение проверки</span>
+            <div class="field-with-btn">
+              <input class="input" id="authorizedPeople" name="inspectors" />
+              <button class="btn" type="button" id="authorizedPickBtn">Выбрать</button>
+            </div>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Подписи уполномоченных в акте</span>
+            <div class="field-with-btn">
+              <input class="input" id="signaturesPeople" name="signs" />
+              <button class="btn" type="button" id="signaturesPickBtn">Выбрать</button>
+            </div>
+          </label>
+        </div>
+      </section>
+
+      <div class="modal__foot">
+        <button class="btn btn--primary" type="submit">СОХРАНИТЬ</button>
+        <button class="btn" type="button" id="checkModalCancel">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Выбор уполномоченных -->
+<div class="modal-backdrop" id="peopleModalBackdrop" hidden>
+  <div class="modal modal--md" role="dialog" aria-modal="true" aria-labelledby="peopleModalTitle">
+    <div class="modal__head">
+      <div class="modal__title" id="peopleModalTitle">Выбор уполномоченных</div>
+      <button class="icon-btn" id="peopleModalClose" type="button" aria-label="Закрыть">✕</button>
+    </div>
+
+    <div class="modal__body">
+      <div class="hint">Выберите людей из списка. Управление списком — через «Изменить».</div>
+      <div class="list" id="peopleCheckboxList" aria-label="Список уполномоченных с чекбоксами"></div>
+    </div>
+
+    <div class="modal__actions">
+      <button class="btn" id="peopleEditBtn" type="button">Изменить</button>
+      <button class="btn" id="peopleCancelBtn" type="button">Отмена</button>
+      <button class="btn btn--primary" id="peopleApplyBtn" type="button">Применить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Управление списком уполномоченных -->
+<div class="modal-backdrop" id="peopleManageBackdrop" hidden>
+  <div class="modal modal--md" role="dialog" aria-modal="true" aria-labelledby="peopleManageTitle">
+    <div class="modal__head">
+      <div class="modal__title" id="peopleManageTitle">Изменить список уполномоченных</div>
+      <button class="icon-btn" id="peopleManageClose" type="button" aria-label="Закрыть">✕</button>
+    </div>
+
+    <div class="modal__body">
+      <div class="field">
+        <label class="label" for="peopleNameInput">ФИО</label>
+        <div class="inline">
+          <input class="input" id="peopleNameInput" type="text" placeholder="Иванов Иван Иванович" />
+          <button class="btn btn--primary" id="peopleAddBtn" type="button">Добавить</button>
+        </div>
+        <div class="hint">Добавляй по одному ФИО. Удаление — кнопкой «Убрать».</div>
+      </div>
+
+      <div class="list" id="peopleManageList" aria-label="Список уполномоченных для редактирования"></div>
+    </div>
+
+    <div class="modal__actions">
+      <button class="btn" id="peopleManageCancelBtn" type="button">Готово</button>
+    </div>
+  </div>
+</div>
+
+
+  <script src="./assets/js/app.js"></script>
+  <script src="assets/js/people-modal.js"></script>
+  <script src="./assets/js/new-check-modal.js"></script>
+</body>
+</html>
