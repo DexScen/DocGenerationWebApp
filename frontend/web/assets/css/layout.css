@@ -4,6 +4,10 @@
   grid-template-columns: 260px 1fr;
 }
 
+.is-auth-required .app{
+  display: none;
+}
+
 .sidebar{
   background: var(--panel);
   border-right: 1px solid var(--border);

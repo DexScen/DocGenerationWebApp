@@ -29,6 +29,10 @@
   max-height: calc(100vh - 48px);
 }
 
+.modal--sm{
+  width: min(420px, 100%);
+}
+
 .modal__head{
   display: flex;
   align-items: center;
@@ -58,6 +62,11 @@
   overflow: auto;
   display: grid;
   gap: 12px;
+}
+
+.download-options{
+  display: grid;
+  gap: 10px;
 }
 
 .form-section{
