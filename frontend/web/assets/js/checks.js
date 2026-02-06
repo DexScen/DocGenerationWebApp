@@ -1,51 +1,76 @@
 // web/assets/js/checks.js
 
 (function initChecksStore() {
-  const STORAGE_KEY = "checksCache";
+  const state = {
+    items: [],
+    loaded: false,
+  };
 
   function load() {
+    return state.items;
+  }
+
+  async function refresh() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
+      const data = await window.Api.request("/inspections");
+      state.items = Array.isArray(data?.items) ? data.items : [];
+      state.loaded = true;
+      return state.items;
     } catch (error) {
-      console.warn("Не удалось прочитать кэш проверок", error);
-      return [];
+      console.warn("Не удалось загрузить проверки", error);
+      state.items = [];
+      state.loaded = true;
+      return state.items;
     }
   }
 
-  function save(list) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  function clear() {
+    state.items = [];
+    state.loaded = true;
+    return state.items;
   }
 
   function getById(id) {
     return load().find((item) => item.id === id) || null;
   }
 
-  function upsert(item) {
-    const list = load();
-    const idx = list.findIndex((entry) => entry.id === item.id);
-    if (idx >= 0) {
-      list[idx] = item;
-    } else {
-      list.unshift(item);
-    }
-    save(list);
-    return list;
+  async function create(payload) {
+    const item = await window.Api.request("/inspections", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    state.items = [item, ...state.items];
+    return item;
   }
 
-  function remove(id) {
-    const list = load().filter((item) => item.id !== id);
-    save(list);
-    return list;
+  async function update(id, payload) {
+    const item = await window.Api.request(`/inspections/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+    const idx = state.items.findIndex((entry) => entry.id === id);
+    if (idx >= 0) {
+      state.items[idx] = item;
+    } else {
+      state.items.unshift(item);
+    }
+    return item;
+  }
+
+  async function remove(id) {
+    await window.Api.request(`/inspections/${id}`, { method: "DELETE" });
+    state.items = state.items.filter((item) => item.id !== id);
+    return state.items;
   }
 
   window.ChecksStore = {
     load,
-    save,
     getById,
-    upsert,
+    refresh,
+    create,
+    update,
     remove,
+    clear,
   };
 })();
 
@@ -73,6 +98,30 @@
   const resetFiltersBtn = document.getElementById("checksResetFilters");
 
   if (!listEl) return;
+
+  // #TODO(BACKEND): протокол блокировок (locking) для проверок.
+  //   1) Acquire lock:
+  //      POST /inspections/{id}/lock
+  //      body: { "mode": "view" | "edit", "ttl_seconds": 60 }
+  //      response 200: { "lock_id": "...", "expires_at": "...", "owner": { "id": "...", "name": "..." }, "mode": "edit" }
+  //      response 409: { "locked": true, "owner": { "id": "...", "name": "..." }, "expires_at": "...", "mode": "edit" }
+  //   2) Heartbeat:
+  //      POST /inspections/{id}/lock/heartbeat
+  //      headers/body: { "lock_id": "..." }
+  //      response 200: { "expires_at": "..." }
+  //      response 410/409: lock потерян/перехвачен -> закрыть форму или read-only
+  //   3) Release lock:
+  //      DELETE /inspections/{id}/lock
+  //      headers/body: { "lock_id": "..." }
+  //      вызывать при закрытии модала/уходе со страницы/успешном сохранении
+  //   4) Status list:
+  //      GET /inspections?include_lock_state=true
+  //      response содержит lock_state: { locked: bool, mode, owner_name, expires_at }
+  //      UI: disable кнопок / бейдж "Занято"
+  //   5) Правила режимов:
+  //      mode=edit эксклюзивный (никто другой не может view/edit).
+  //      mode=view: вариант A) шарится между view; вариант B) эксклюзивен как edit (выбрать на backend и отразить в UI).
+  //      update/delete/download без валидного lock_id -> 409/423 с сообщением причины.
 
   function openDownloadModal() {
     if (!downloadBackdrop) return;
@@ -322,6 +371,14 @@
   }
 
   function renderList() {
+    // #TODO(BACKEND): точка интеграции загрузки списка проверок с сервера с учетом фильтров/сортировки/пагинации.
+    //   endpoint: GET /inspections?include_lock_state=true&search=...&form_type=...&order_no=...&order_date=...&address=...&created_by=...&updated_by=...&period_from=...&period_to=...&created_from=...&created_to=...&updated_from=...&updated_to=...&sort=created_at&direction=desc&page=1&page_size=20
+    //   headers: { "Authorization": "Bearer <token>" }
+    //   response 200: { "items": [...], "total": 123, "page": 1, "page_size": 20 }
+    //   response items include: { ..., "lock_state": { "locked": true, "mode": "edit", "owner_name": "...", "expires_at": "..." } }
+    //   where: renderList() before reading ChecksStore / on filters change
+    //   auth: требуется токен/куки
+    //   errors: 401/403 -> "Нет доступа"; 500 -> "Ошибка загрузки".
     const checks = window.ChecksStore?.load?.() ?? [];
     const filteredChecks = sortChecks(filterChecks(checks));
     listEl.innerHTML = "";
@@ -367,6 +424,16 @@
       openBtn.type = "button";
       openBtn.textContent = "Открыть";
       openBtn.addEventListener("click", () => {
+        // #TODO(BACKEND): блокировка проверки при открытии просмотра (locking: acquire).
+        //   endpoint: POST /inspections/{id}/lock
+        //   request: { "mode": "view", "ttl_seconds": 60 }
+        //   response 200: { "lock_id": "...", "expires_at": "...", "owner": { "id": "...", "name": "..." }, "mode": "view" }
+        //   response 409: { "locked": true, "owner": { "id": "...", "name": "..." }, "expires_at": "...", "mode": "edit" }
+        //   where: openBtn click handler (before showing details dialog)
+        //   auth: требуется токен/куки
+        //   errors: 401/403 -> показать "Нет доступа"; 409 -> "Проверка занята пользователем ..."; 423 -> "Нет блокировки"; 500 -> "Ошибка блокировки".
+        //   local: хранить lock_id/expires_at (например, в state или data-атрибутах строки).
+        //   heartbeat: POST /inspections/{id}/lock/heartbeat каждые ~30s или onVisibilityChange; 410/409 -> перевести UI в read-only/закрыть.
         const message = [
           `Организация: ${item?.organization?.name || "—"}`,
           `ОГРН: ${item?.organization?.ogrn || "—"}`,
@@ -378,6 +445,12 @@
         } else {
           alert(message);
         }
+        // #TODO(BACKEND): release lock при закрытии окна просмотра.
+        //   endpoint: DELETE /inspections/{id}/lock
+        //   headers/body: { "lock_id": "..." }
+        //   where: on dialog close (AppDialog.closeDialog hook)
+        //   auth: требуется токен/куки
+        //   errors: 401 -> игнорировать; 410 -> lock уже потерян.
       });
 
       const editBtn = document.createElement("button");
@@ -385,6 +458,16 @@
       editBtn.type = "button";
       editBtn.textContent = "Изменить";
       editBtn.addEventListener("click", () => {
+        // #TODO(BACKEND): блокировка проверки при открытии редактирования (locking: acquire).
+        //   endpoint: POST /inspections/{id}/lock
+        //   request: { "mode": "edit", "ttl_seconds": 60 }
+        //   response 200: { "lock_id": "...", "expires_at": "...", "owner": { "id": "...", "name": "..." }, "mode": "edit" }
+        //   response 409: { "locked": true, "owner": { "id": "...", "name": "..." }, "expires_at": "...", "mode": "edit" }
+        //   where: editBtn click handler (before opening NewCheckModal)
+        //   auth: требуется токен/куки
+        //   errors: 401/403 -> показать "Нет доступа"; 409 -> показать "Проверка занята"; 423 -> "Нет блокировки"; 500 -> "Ошибка блокировки".
+        //   local: сохранить lock_id/expires_at в form dataset для последующего update/delete/download.
+        //   heartbeat: POST /inspections/{id}/lock/heartbeat таймер + onVisibilityChange.
         if (window.NewCheckModal?.open) {
           window.NewCheckModal.open({ mode: "edit", data: item });
         }
@@ -394,11 +477,17 @@
       deleteBtn.className = "btn btn--ghost";
       deleteBtn.type = "button";
       deleteBtn.textContent = "Удалить";
-      deleteBtn.addEventListener("click", () => {
+      deleteBtn.addEventListener("click", async () => {
         const ok = window.confirm("Удалить проверку?");
         if (!ok) return;
-        window.ChecksStore?.remove?.(item.id);
-        window.dispatchEvent(new CustomEvent("checks:updated"));
+        try {
+          await window.ChecksStore?.remove?.(item.id);
+          window.dispatchEvent(new CustomEvent("checks:updated"));
+        } catch (error) {
+          if (window.AppDialog?.openDialog) {
+            window.AppDialog.openDialog(error.message || "Ошибка удаления проверки.", "Проверки");
+          }
+        }
       });
 
       const downloadBtn = document.createElement("button");
@@ -406,6 +495,13 @@
       downloadBtn.type = "button";
       downloadBtn.textContent = "Скачать";
       downloadBtn.addEventListener("click", () => {
+        // #TODO(BACKEND): скачивание документа должно требовать lock_id (если включен режим блокировок).
+        //   endpoint: GET /inspections/{id}/export/docx?template=act
+        //   headers: { "Authorization": "Bearer <token>", "X-Lock-Id": "<lock_id>" }
+        //   response 200: binary/docx
+        //   where: downloadBtn click handler -> openDownloadModal()
+        //   auth: требуется токен/куки
+        //   errors: 401/403 -> "Нет доступа"; 409/423 -> "Нет валидной блокировки"; 500 -> "Ошибка генерации файла".
         openDownloadModal();
       });
 
@@ -476,6 +572,27 @@
     input.addEventListener(eventName, renderList);
   });
 
+  async function handleAuthChange() {
+    if (window.AuthState?.isLoggedIn?.()) {
+      if (window.ChecksStore?.refresh) {
+        await window.ChecksStore.refresh();
+      }
+    } else {
+      window.ChecksStore?.clear?.();
+    }
+    window.dispatchEvent(new CustomEvent("checks:updated"));
+  }
+
   window.addEventListener("checks:updated", renderList);
+  window.addEventListener("auth:changed", () => {
+    handleAuthChange().catch((error) => {
+      console.warn("Не удалось обновить проверки после смены авторизации", error);
+    });
+  });
   renderList();
+  if (window.ChecksStore?.refresh) {
+    window.ChecksStore.refresh().then(() => {
+      window.dispatchEvent(new CustomEvent("checks:updated"));
+    });
+  }
 })();

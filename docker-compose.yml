@@ -15,8 +15,18 @@ services:
       - go-mod:/go/pkg/mod #mb out
     networks:
       - app-network
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ./Dockerfile
+    depends_on:
+      - backend
+    ports:
+      - "8081:80"
+    networks:
+      - app-network
   postgres:
-    build: ./PostgreSQL
+    build: ./postgreSQL
     container_name: my_postgres
     restart: always
     healthcheck:
@@ -34,17 +44,6 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - app-network
-    # frontend:
-    #   build:
-    #     context: ./frontend
-    #   depends_on:
-    #     - backend
-    #   ports:
-    #     - "81:80"
-    #   volumes:
-    #     - ./frontend:/usr/share/nginx/html   
-    #   networks:
-    # - app-network
 
 networks:
   app-network:
@@ -53,4 +52,3 @@ networks:
 volumes:
   postgres_data:
   go-mod: #?
-  frontend:

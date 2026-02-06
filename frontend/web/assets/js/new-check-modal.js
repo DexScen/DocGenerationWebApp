@@ -18,6 +18,20 @@
       else alert("Войдите в систему, чтобы создать или редактировать проверку.");
       return;
     }
+    // #TODO(BACKEND): при открытии модала для edit нужно получить lock и (опционально) свежие данные.
+    //   locking acquire:
+    //     endpoint: POST /inspections/{id}/lock
+    //     body: { "mode": "edit", "ttl_seconds": 60 }
+    //     response 200: { "lock_id": "...", "expires_at": "...", "owner": { "id": "...", "name": "..." }, "mode": "edit" }
+    //     response 409: { "locked": true, "owner": { "id": "...", "name": "..." }, "expires_at": "...", "mode": "edit" }
+    //   data refresh (optional):
+    //     endpoint: GET /inspections/{id}
+    //     headers: { "Authorization": "Bearer <token>" }
+    //     response 200: { ...inspection }
+    //   where: openModal({ mode: "edit" })
+    //   auth: требуется токен/куки
+    //   errors: 401/403 -> показать "Нет доступа"; 409/423 -> "Проверка занята"; 500 -> "Ошибка открытия".
+    //   local: сохранить lock_id/expires_at в form.dataset для heartbeat/submit/delete/download.
     backdrop.hidden = false;
     backdrop.style.zIndex = "1000";
     document.documentElement.classList.add("is-dialog-open");
@@ -34,7 +48,21 @@
     }
   }
 
+  // #TODO(BACKEND): запуск heartbeat для активной блокировки проверки в режиме edit/view.
+  //   endpoint: POST /inspections/{id}/lock/heartbeat
+  //   headers/body: { "lock_id": "..." }
+  //   response 200: { "expires_at": "..." }
+  //   where: после успешного acquire lock (setInterval ~30s + visibilitychange)
+  //   auth: требуется токен/куки
+  //   errors: 409/410 -> закрыть форму/перевести в read-only и уведомить пользователя.
+
   function closeModal(){
+    // #TODO(BACKEND): release lock при закрытии модала или уходе со страницы.
+    //   endpoint: DELETE /inspections/{id}/lock
+    //   headers/body: { "lock_id": "..." }
+    //   where: closeModal() + window.beforeunload/visibilitychange
+    //   auth: требуется токен/куки
+    //   errors: 401 -> игнорировать; 410 -> lock уже потерян.
     backdrop.hidden = true;
     backdrop.style.removeProperty("z-index");
     document.documentElement.classList.remove("is-dialog-open");
@@ -252,6 +280,15 @@
       }
 
       const payload = buildInspectionPayload(form);
+      // #TODO(BACKEND): создание/обновление проверки на сервере.
+      //   endpoint (create): POST /inspections
+      //   endpoint (update): PUT /inspections/{id}
+      //   headers: { "Authorization": "Bearer <token>", "X-Lock-Id": "<lock_id>" }
+      //   request: { ...payload }
+      //   response 201/200: { "id": 123, ...payload }
+      //   where: submit handler (после валидности)
+      //   auth: требуется токен/куки
+      //   errors: 401/403 -> "Нет доступа"; 409/423 -> "Нет валидной блокировки"; 500 -> "Ошибка сохранения".
 
       if (!hasAnyInspectionData(payload)) {
         if (window.AppDialog?.openDialog) window.AppDialog.openDialog("Заполните данные проверки.");
@@ -260,19 +297,26 @@
       }
 
       const existingId = form.dataset.editId ? Number(form.dataset.editId) : null;
-      const existing = existingId ? window.ChecksStore?.getById?.(existingId) : null;
-      const authenticatedUser = getAuthenticatedUser();
-      const entry = {
-        id: existing?.id ?? Date.now(),
-        created_at: existing?.created_at ?? new Date().toISOString(),
-        updated_at: existing ? new Date().toISOString() : null,
-        updated_by: existing ? (authenticatedUser?.name || existing?.created_by || "—") : null,
-        ...payload,
-      };
+      try {
+        if (existingId) {
+          await window.ChecksStore?.update?.(existingId, payload);
+        } else {
+          await window.ChecksStore?.create?.(payload);
+        }
+        window.dispatchEvent(new CustomEvent("checks:updated"));
+      } catch (error) {
+        if (window.AppDialog?.openDialog) {
+          window.AppDialog.openDialog(error.message || "Ошибка сохранения проверки.", "Проверки");
+        }
+        return;
+      }
 
-      window.ChecksStore?.upsert?.(entry);
-      window.dispatchEvent(new CustomEvent("checks:updated"));
-
+      // #TODO(BACKEND): при успешном сохранении release lock.
+      //   endpoint: DELETE /inspections/{id}/lock
+      //   headers/body: { "lock_id": "..." }
+      //   where: после успешного POST/PUT
+      //   auth: требуется токен/куки
+      //   errors: 401 -> игнорировать; 410 -> lock уже потерян.
       closeModal();
     });
   }

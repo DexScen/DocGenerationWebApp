@@ -107,6 +107,34 @@
   window.AppDialog = { openDialog, closeDialog };
 })();
 
+(function initApi() {
+  async function request(path, options = {}) {
+    const response = await fetch(`/api${path}`, {
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      },
+      ...options,
+    });
+
+    if (response.status === 204) {
+      return null;
+    }
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const message = data?.message || "Ошибка запроса";
+      const error = new Error(message);
+      error.status = response.status;
+      throw error;
+    }
+    return data;
+  }
+
+  window.Api = { request };
+})();
+
 (function initAuthAndAdmin() {
   const authBtn = document.getElementById("btnAuth");
   const userChip = document.getElementById("userChip");
@@ -137,14 +165,6 @@
     isAuthLocked: true,
   };
 
-  const AUTH_STORAGE_KEY = "authSession";
-  const USERS_STORAGE_KEY = "usersCache";
-
-  const defaultUsers = [
-    { id: 1, name: "Иванов Иван Иванович", login: "admin", password: "admin123", role: "admin" },
-    { id: 2, name: "Петрова Анна Сергеевна", login: "petrova", password: "user123", role: "user" },
-  ];
-
   const ROLE_LABELS = {
     admin: "Администратор",
     user: "Пользователь",
@@ -157,49 +177,27 @@
     return "user";
   }
 
-  function loadUsers() {
+  let users = [];
+
+  async function loadUsers() {
     try {
-      const raw = localStorage.getItem(USERS_STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : null;
-      if (Array.isArray(parsed) && parsed.length) {
-        return parsed.map((entry) => ({
-          ...entry,
-          role: normalizeRole(entry.role),
-        }));
-      }
+      const list = await window.Api.request("/users");
+      return Array.isArray(list) ? list.map((entry) => ({ ...entry, role: normalizeRole(entry.role) })) : [];
     } catch (error) {
       console.warn("Не удалось загрузить пользователей", error);
+      if (window.AppDialog?.openDialog) {
+        window.AppDialog.openDialog("Нет доступа к списку пользователей.", "Админ-панель");
+      }
+      return [];
     }
-    return [...defaultUsers];
   }
 
-  function saveUsers(list) {
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(list));
-  }
-
-  let users = loadUsers();
-
-  function loadSession() {
+  async function loadSession() {
     try {
-      const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : null;
-      if (!parsed || !parsed.id) return null;
-      const user = users.find((entry) => entry.id === parsed.id);
-      if (!user) return null;
-      if (user.role === "no_access") return null;
-      return { id: user.id, name: user.name, login: user.login, role: user.role };
+      return await window.Api.request("/auth/me");
     } catch (error) {
-      console.warn("Не удалось восстановить сессию", error);
       return null;
     }
-  }
-
-  function saveSession(user) {
-    if (!user) {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-      return;
-    }
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ id: user.id }));
   }
 
   function setAuthLockState(isLocked) {
@@ -276,12 +274,16 @@
         deleteBtn.disabled = true;
         deleteBtn.title = "Нельзя удалить текущего пользователя";
       }
-      deleteBtn.addEventListener("click", () => {
+      deleteBtn.addEventListener("click", async () => {
         if (authState.user?.id === user.id) return;
-        if (window.confirm(`Удалить пользователя «${user.name}»?`)) {
-          users = users.filter((entry) => entry.id !== user.id);
-          saveUsers(users);
-          renderUsers();
+        if (!window.confirm(`Удалить пользователя «${user.name}»?`)) return;
+        try {
+          await window.Api.request(`/users/${user.id}`, { method: "DELETE" });
+          await refreshUsers();
+        } catch (error) {
+          if (window.AppDialog?.openDialog) {
+            window.AppDialog.openDialog(error.message || "Ошибка удаления пользователя.", "Админ-панель");
+          }
         }
       });
 
@@ -315,7 +317,7 @@
     setAuthStatus("");
   }
 
-  function handleAuthClick() {
+  async function handleAuthClick() {
     if (!authState.isLoggedIn) {
       openAuthModal();
       return;
@@ -323,11 +325,15 @@
 
     authState.isLoggedIn = false;
     authState.user = null;
-    saveSession(null);
+    try {
+      await window.Api.request("/auth/logout", { method: "POST" });
+    } catch (error) {
+      console.warn("Не удалось завершить сессию", error);
+    }
     renderAuth();
   }
 
-  function handleAddUser() {
+  async function handleAddUser() {
     const name = (userNameInput?.value || "").trim();
     const login = (userLoginInput?.value || "").trim();
     const password = (userPasswordInput?.value || "").trim();
@@ -341,37 +347,47 @@
       return;
     }
 
-    users = [
-      ...users,
-      {
-        id: Date.now(),
-        name,
-        login,
-        password,
-        role: normalizeRole(role),
-      },
-    ];
-    saveUsers(users);
+    try {
+      await window.Api.request("/users", {
+        method: "POST",
+        body: JSON.stringify({
+          name,
+          login,
+          password,
+          role: normalizeRole(role),
+        }),
+      });
+      await refreshUsers();
+    } catch (error) {
+      if (window.AppDialog?.openDialog) {
+        window.AppDialog.openDialog(error.message || "Ошибка сохранения пользователя.", "Админ-панель");
+      }
+      return;
+    }
 
     userNameInput.value = "";
     userLoginInput.value = "";
     userPasswordInput.value = "";
     if (userRoleInput) userRoleInput.value = "user";
-    renderUsers();
   }
 
-  function handleAssignRole() {
+  async function handleAssignRole() {
     if (!userSelectEl || !roleSelectEl) return;
     const userId = Number(userSelectEl.value);
     const role = roleSelectEl.value;
-    const user = users.find((entry) => entry.id === userId);
-    if (!user) return;
-    user.role = normalizeRole(role);
-    saveUsers(users);
-    renderUsers();
-
-    if (window.AppDialog?.openDialog) {
-      window.AppDialog.openDialog("Права обновлены (заглушка).", "Админ-панель");
+    try {
+      await window.Api.request(`/users/${userId}/role`, {
+        method: "PATCH",
+        body: JSON.stringify({ role: normalizeRole(role) }),
+      });
+      await refreshUsers();
+      if (window.AppDialog?.openDialog) {
+        window.AppDialog.openDialog("Права обновлены.", "Админ-панель");
+      }
+    } catch (error) {
+      if (window.AppDialog?.openDialog) {
+        window.AppDialog.openDialog(error.message || "Ошибка обновления прав.", "Админ-панель");
+      }
     }
   }
 
@@ -388,44 +404,56 @@
   }
 
   if (authForm) {
-    authForm.addEventListener("submit", (event) => {
+    authForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const login = (authLoginInput?.value || "").trim();
       const password = (authPasswordInput?.value || "").trim();
-      const user = users.find((entry) => entry.login === login && entry.password === password);
-      if (!user) {
+      try {
+        const response = await window.Api.request("/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ login, password }),
+        });
+        authState.isLoggedIn = true;
+        authState.user = response.user;
+        closeAuthModal();
+        renderAuth();
+        await refreshUsers();
+      } catch (error) {
+        if (error.status === 403) {
+          setAuthStatus("Вы зарегистрированы в системе, но у вас нет прав для работы с ней.");
+          if (authPasswordInput) authPasswordInput.value = "";
+          return;
+        }
         if (window.AppDialog?.openDialog) {
-          window.AppDialog.openDialog("Неверный логин или пароль.", "Вход");
+          window.AppDialog.openDialog(error.message || "Неверный логин или пароль.", "Вход");
         } else {
-          alert("Неверный логин или пароль.");
+          alert(error.message || "Неверный логин или пароль.");
         }
         setAuthStatus("");
-        return;
       }
-      if (user.role === "no_access") {
-        setAuthStatus("Вы зарегистрированы в системе, но у вас нет прав для работы с ней.");
-        if (authPasswordInput) authPasswordInput.value = "";
-        return;
-      }
-      authState.isLoggedIn = true;
-      authState.user = { id: user.id, name: user.name, login: user.login, role: user.role };
-      saveSession(authState.user);
-      closeAuthModal();
-      renderAuth();
     });
   }
 
-  const storedSession = loadSession();
-  if (storedSession) {
-    authState.isLoggedIn = true;
-    authState.user = storedSession;
+  async function refreshUsers() {
+    users = await loadUsers();
+    renderUsers();
   }
 
-  renderAuth();
-  renderUsers();
-  if (!authState.isLoggedIn) {
-    openAuthModal();
+  async function initAuth() {
+    const storedSession = await loadSession();
+    if (storedSession) {
+      authState.isLoggedIn = true;
+      authState.user = storedSession;
+    }
+    renderAuth();
+    if (authState.isLoggedIn) {
+      await refreshUsers();
+    } else {
+      openAuthModal();
+    }
   }
+
+  initAuth();
 
   window.AuthState = {
     getUser: () => authState.user,

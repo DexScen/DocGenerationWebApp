@@ -24,6 +24,13 @@
   let onApply = null;
 
   function savePersonStub(fio) {
+    // #TODO(BACKEND): сохранить уполномоченное лицо на сервере (справочник).
+    //   endpoint: POST /inspectors
+    //   request: { "full_name": "..." }
+    //   response 201: { "id": 1, "full_name": "..." }
+    //   where: savePersonStub() / addToStore()
+    //   auth: требуется токен/куки
+    //   errors: 401/403 -> "Нет доступа"; 409 -> "Уже существует"; 500 -> "Ошибка сохранения".
     console.log(`[stub] save person to db: ${fio}`);
   }
 
@@ -38,6 +45,13 @@
   }
 
   function ensurePeople(list){
+    // #TODO(BACKEND): загрузить список уполномоченных лиц при открытии модала.
+    //   endpoint: GET /inspectors?search=...
+    //   headers: { "Authorization": "Bearer <token>" }
+    //   response 200: [{ "id": 1, "full_name": "..." }]
+    //   where: openModal() before renderSelection()
+    //   auth: требуется токен/куки
+    //   errors: 401/403 -> показать "Нет доступа"; 500 -> "Ошибка загрузки списка".
     (list || []).forEach(addToStore);
   }
 
@@ -99,6 +113,13 @@
       del.type = "button";
       del.textContent = "Убрать";
       del.addEventListener("click", () => {
+        // #TODO(BACKEND): удаление уполномоченного лица из справочника.
+        //   endpoint: DELETE /inspectors/{id}
+        //   headers: { "Authorization": "Bearer <token>" }
+        //   response 204
+        //   where: renderManage() -> del click handler
+        //   auth: требуется токен/куки
+        //   errors: 401/403 -> "Нет доступа"; 409 -> "Связано с проверками"; 500 -> "Ошибка удаления".
         peopleStore.splice(idx, 1);
         selected.delete(fio);
         renderManage();

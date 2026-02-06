@@ -98,7 +98,7 @@
             <div class="panel__body">
               <div class="inline">
                 <button class="btn btn--primary" type="button" id="btnNewCheckFromList">Новая проверка</button>
-                <div class="hint">Данные сохраняются в кэше браузера.</div>
+                <div class="hint">Данные загружаются с сервера.</div>
               </div>
               <div class="filters" id="checksFilters">
                 <div class="filters__row">
@@ -192,8 +192,8 @@
                       </label>
                     </div>
                   </div>
+                  <button class="btn btn--ghost filters__reset" type="button" id="checksResetFilters">Сбросить фильтры</button>
                 </div>
-                <button class="btn btn--ghost filters__reset" type="button" id="checksResetFilters">Сбросить фильтры</button>
               </div>
               <div class="list" id="checksList"></div>
               <div class="list__empty" id="checksEmpty" hidden>Проверок пока нет.</div>

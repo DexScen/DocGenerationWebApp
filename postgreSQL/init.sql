@@ -6,55 +6,29 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TABLE organizations (
+-- =========================================
+-- Таблица act
+-- =========================================
+
+CREATE TABLE act (
     id SERIAL PRIMARY KEY,
-    full_name TEXT NOT NULL,
-    short_name TEXT,
-    ogrn VARCHAR(15) UNIQUE NOT NULL,
-    legal_address TEXT NOT NULL,
-    postal_address TEXT,
 
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
+    -- Организация
+    organization_full_name TEXT NOT NULL,
+    organization_short_name TEXT,
+    organization_ogrn VARCHAR(15) NOT NULL,
+    organization_legal_address TEXT NOT NULL,
+    organization_postal_address TEXT,
 
-CREATE TRIGGER trg_organization_updated
-BEFORE UPDATE ON organizations
-FOR EACH ROW
-EXECUTE FUNCTION set_updated_at();
+    -- Руководитель
+    leader_position TEXT NOT NULL,
+    leader_last_name TEXT NOT NULL,
+    leader_first_name TEXT NOT NULL,
+    leader_middle_name TEXT,
+    leader_initials_name_im TEXT,
+    leader_initials_name_dat TEXT,
 
--- =========================
--- Руководитель организации
--- =========================
-CREATE TABLE leader (
-    id SERIAL PRIMARY KEY,
-    organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-
-    position TEXT NOT NULL,
-    last_name TEXT NOT NULL,
-    first_name TEXT NOT NULL,
-    middle_name TEXT,
-
-    initials_name_im TEXT,
-    initials_name_dat TEXT,
-
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-
-CREATE TRIGGER trg_leader_updated
-BEFORE UPDATE ON leader
-FOR EACH ROW
-EXECUTE FUNCTION set_updated_at();
-
-
--- =========================
--- Проверка
--- =========================
-CREATE TABLE inspection (
-    id SERIAL PRIMARY KEY,
-    organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-
+    -- Основные поля проверки
     inspection_type TEXT NOT NULL CHECK (
         inspection_type IN (
             'плановая документарная',
@@ -65,198 +39,154 @@ CREATE TABLE inspection (
     ),
 
     minzdrav_order_number TEXT,
-    minzdrav_order_date DATE,
+    minzdrav_order_date TIMESTAMPTZ,
     minzdrav_order_name TEXT,
 
     chomiaz_order_number TEXT,
-    chomiaz_order_date DATE,
+    chomiaz_order_date TIMESTAMPTZ,
 
     letter_number TEXT,
-    letter_date DATE,
+    letter_date TIMESTAMPTZ,
 
     inspection_number TEXT,
-    date_start DATE,
-    date_end DATE,
-    date_early_end DATE,
+    date_start TIMESTAMPTZ,
+    date_end TIMESTAMPTZ,
+    date_early_end TIMESTAMPTZ,
     duration_work_days INTEGER,
 
     representative_document TEXT,
 
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    -- Массивы
+    addresses TEXT[] DEFAULT '{}'::TEXT[],
+    authorized_persons TEXT[] DEFAULT '{}'::TEXT[],
+    signatories TEXT[] DEFAULT '{}'::TEXT[],
+    representatives TEXT[] DEFAULT '{}'::TEXT[],
+
+    -- Конкурентный доступ
+    created_by TEXT,
+    updated_by TEXT,
+    is_locked BOOLEAN NOT NULL DEFAULT FALSE,
+    locked_at TIMESTAMPTZ,
+    locked_by TEXT,
+
+    -- Временные метки
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TRIGGER trg_inspection_updated
-BEFORE UPDATE ON inspection
+-- Триггер на updated_at
+CREATE TRIGGER trg_act_updated
+BEFORE UPDATE ON act
 FOR EACH ROW
 EXECUTE FUNCTION set_updated_at();
 
--- =========================
--- Адреса проведения проверки
--- =========================
-CREATE TABLE inspection_addresses (
+CREATE TABLE users (
     id SERIAL PRIMARY KEY,
-    inspection_id INTEGER NOT NULL REFERENCES inspection(id) ON DELETE CASCADE,
-    address TEXT NOT NULL
+    fio TEXT NOT NULL,
+    login TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'user'
 );
 
--- =========================
--- Уполномоченные на проведение проверки
--- =========================
-CREATE TABLE inspection_authorized_persons (
-    id SERIAL PRIMARY KEY,
-    inspection_id INTEGER NOT NULL REFERENCES inspection(id) ON DELETE CASCADE,
-    full_name TEXT NOT NULL
+CREATE TABLE info (
+    shortcut TEXT,
+    definition TEXT,
+    description TEXT,
+    templates TEXT[] DEFAULT '{}'::TEXT[]
 );
 
--- =========================
--- Подписанты из числа уполномоченных
--- =========================
-CREATE TABLE inspection_signatories (
-    id SERIAL PRIMARY KEY,
-    inspection_id INTEGER NOT NULL REFERENCES inspection(id) ON DELETE CASCADE,
-    full_name TEXT NOT NULL
+CREATE TABLE field (
+    act_id INTEGER NOT NULL REFERENCES act(id) ON DELETE CASCADE,
+    field1 TEXT,
+    field2 TEXT,
+    field3 TEXT,
+    field4 TEXT
 );
 
--- =========================
--- Представители учреждения
--- =========================
-CREATE TABLE inspection_representatives (
-    id SERIAL PRIMARY KEY,
-    inspection_id INTEGER NOT NULL REFERENCES inspection(id) ON DELETE CASCADE,
-    full_name TEXT NOT NULL
-);
-
------------------------------
-
-INSERT INTO organizations (full_name, short_name, ogrn, legal_address, postal_address)
+INSERT INTO users (fio, login, password, role)
 VALUES
-(
-    'Государственное бюджетное учреждение здравоохранения "Городская клиническая больница №1"',
-    'ГБУЗ ГКБ №1',
-    '1027400000001',
-    'г. Челябинск, ул. Ленина, д. 10',
-    '454000, г. Челябинск, а/я 10'
-),
-(
-    'Государственное автономное учреждение здравоохранения "Областной онкологический диспансер"',
-    'ГАУЗ ООД',
-    '1027400000002',
-    'г. Челябинск, ул. Свободы, д. 45',
-    '454090, г. Челябинск, ул. Свободы, д. 45'
-);
+('Администратор', 'admin', 'admin', 'admin'),
+('Петрова Анна Сергеевна', 'petrova', 'user123', 'user');
 
-
-INSERT INTO leader (
-    organization_id,
-    position,
-    last_name,
-    first_name,
-    middle_name,
-    initials_name_im,
-    initials_name_dat
-)
-VALUES
-(
-    1,
-    'Главный врач',
-    'Иванов',
-    'Сергей',
-    'Петрович',
-    'С.П. Иванов',
-    'С.П. Иванову'
-),
-(
-    2,
-    'Директор',
-    'Смирнова',
-    'Елена',
-    'Владимировна',
-    'Е.В. Смирнова',
-    'Е.В. Смирновой'
-);
-
-INSERT INTO inspection (
-    organization_id,
+INSERT INTO act (
+    organization_full_name,
+    organization_short_name,
+    organization_ogrn,
+    organization_legal_address,
+    organization_postal_address,
+    leader_position,
+    leader_last_name,
+    leader_first_name,
+    leader_middle_name,
     inspection_type,
-
     minzdrav_order_number,
     minzdrav_order_date,
-    minzdrav_order_name,
-
-    chomiaz_order_number,
-    chomiaz_order_date,
-
-    letter_number,
-    letter_date,
-
     inspection_number,
     date_start,
     date_end,
     duration_work_days,
-
-    representative_document
+    letter_number,
+    letter_date,
+    representative_document,
+    addresses,
+    authorized_persons,
+    signatories,
+    representatives,
+    created_by,
+    updated_by
 )
 VALUES
 (
-    1,
+    'Тест 1',
+    'Тест 1',
+    'Тест 1',
+    'Тест 1',
+    'Тест 1',
+    'Главный врач',
+    'Тест 1',
+    'Тест 1',
+    'Тест 1',
     'плановая документарная',
     '123-ОД',
     '2025-03-01',
-    'О проведении плановой проверки',
-
-    '45-П',
-    '2025-03-05',
-
-    '01-12/456',
-    '2025-02-20',
-
     'ПР-2025-001',
     '2025-03-10',
     '2025-03-20',
     8,
-
-    'Доверенность №12 от 01.03.2025'
+    'Тест 1',
+    '2025-02-20',
+    'Тест 1',
+    ARRAY['Тест 1'],
+    ARRAY['Петров Алексей Николаевич', 'Сидорова Мария Ивановна'],
+    ARRAY['Петров Алексей Николаевич'],
+    ARRAY['Иванов Сергей Петрович'],
+    'Иванов Иван Иванович',
+    'Иванов Иван Иванович'
 ),
 (
-    2,
-    'внеплановая выездная',
-    '789-ОД',
+    'Тест 2',
+    'Тест 2',
+    'Тест 2',
+    'Тест 2',
+    'Тест 2',
+    'Главный врач',
+    'Тест 2',
+    'Тест 2',
+    'Тест 2',
+    'плановая документарная',
+    '123-ОД',
     '2025-04-10',
-    'О проведении внеплановой выездной проверки',
-
-    '77-П',
-    '2025-04-12',
-
-    '02-34/789',
-    '2025-04-05',
-
     'ПР-2025-002',
     '2025-04-15',
     '2025-04-25',
     7,
-
-    'Приказ о назначении представителя №5 от 10.04.2025'
+    '02-34/789',
+    '2025-04-05',
+    'Тест 2',
+    ARRAY['Тест 2'],
+    ARRAY['Кузнецов Дмитрий Сергеевич'],
+    ARRAY['Кузнецов Дмитрий Сергеевич'],
+    ARRAY['Смирнова Елена Владимировна'],
+    'Петрова Анна Сергеевна',
+    'Петрова Анна Сергеевна'
 );
-
-INSERT INTO inspection_addresses (inspection_id, address)
-VALUES
-(1, 'г. Челябинск, ул. Ленина, д. 10'),
-(1, 'г. Челябинск, ул. Кирова, д. 15'),
-(2, 'г. Челябинск, ул. Свободы, д. 45');
-
-INSERT INTO inspection_authorized_persons (inspection_id, full_name)
-VALUES
-(1, 'Петров Алексей Николаевич'),
-(1, 'Сидорова Мария Ивановна'),
-(2, 'Кузнецов Дмитрий Сергеевич');
-
-INSERT INTO inspection_signatories (inspection_id, full_name)
-VALUES
-(1, 'Петров Алексей Николаевич'),
-(2, 'Кузнецов Дмитрий Сергеевич');
-
-INSERT INTO inspection_representatives (inspection_id, full_name)
-VALUES
-(1, 'Иванов Сергей Петрович'),
-(2, 'Смирнова Елена Владимировна');
