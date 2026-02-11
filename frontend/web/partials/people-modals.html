@@ -1,0 +1,47 @@
+<!-- Modal: Выбор уполномоченных -->
+<div class="modal-backdrop" id="peopleModalBackdrop" hidden>
+  <div class="modal modal--md" role="dialog" aria-modal="true" aria-labelledby="peopleModalTitle">
+    <div class="modal__head">
+      <div class="modal__title" id="peopleModalTitle">Выбор уполномоченных</div>
+      <button class="icon-btn" id="peopleModalClose" type="button" aria-label="Закрыть">✕</button>
+    </div>
+
+    <div class="modal__body">
+      <div class="hint">Выберите сотрудников из списка. Управление списком — в разделе «Сотрудники».</div>
+      <div class="list" id="peopleCheckboxList" aria-label="Список уполномоченных с чекбоксами"></div>
+    </div>
+
+    <div class="modal__actions">
+      <button class="btn" id="peopleEditBtn" type="button">Сотрудники</button>
+      <button class="btn" id="peopleCancelBtn" type="button">Отмена</button>
+      <button class="btn btn--primary" id="peopleApplyBtn" type="button">Применить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Управление списком уполномоченных -->
+<div class="modal-backdrop" id="peopleManageBackdrop" hidden>
+  <div class="modal modal--md" role="dialog" aria-modal="true" aria-labelledby="peopleManageTitle">
+    <div class="modal__head">
+      <div class="modal__title" id="peopleManageTitle">Изменить список уполномоченных</div>
+      <button class="icon-btn" id="peopleManageClose" type="button" aria-label="Закрыть">✕</button>
+    </div>
+
+    <div class="modal__body">
+      <div class="field">
+        <label class="label" for="peopleNameInput">ФИО</label>
+        <div class="inline">
+          <input class="input" id="peopleNameInput" type="text" placeholder="Иванов Иван Иванович" />
+          <button class="btn btn--primary" id="peopleAddBtn" type="button">Добавить</button>
+        </div>
+        <div class="hint">Добавляй по одному ФИО. Удаление — кнопкой «Убрать».</div>
+      </div>
+
+      <div class="list" id="peopleManageList" aria-label="Список уполномоченных для редактирования"></div>
+    </div>
+
+    <div class="modal__actions">
+      <button class="btn" id="peopleManageCancelBtn" type="button">Готово</button>
+    </div>
+  </div>
+</div>

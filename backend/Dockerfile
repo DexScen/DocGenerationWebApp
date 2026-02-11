@@ -1,18 +1,21 @@
 FROM golang:1.24-alpine AS builder
-
 WORKDIR /app
 
-COPY /backend/go.mod /backend/go.sum ./
+COPY backend/go.mod backend/go.sum ./
+RUN go mod download
 
-COPY /backend/ .
+COPY backend/ ./
+RUN go mod tidy
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/doc ./cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/doc ./cmd
+
 
 FROM alpine:latest
-
-COPY --from=builder /app/doc /app/
-COPY backend/.env /app/
-
 WORKDIR /app
 
-CMD ["./doc"]
+RUN apk add --no-cache ca-certificates
+
+COPY --from=builder /app/doc /app/doc
+COPY backend/.env /app/.env
+
+CMD ["/app/doc"]

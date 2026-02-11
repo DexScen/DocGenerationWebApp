@@ -9,557 +9,64 @@
   <link rel="stylesheet" href="./assets/css/layout.css" />
   <link rel="stylesheet" href="./assets/css/components.css" />
   <link rel="stylesheet" href="./assets/css/modal.css" />
+  <link rel="stylesheet" href="./assets/css/inspection-window.css" />
 </head>
 
 <body>
-  <div class="app">
-    <!-- Sidebar -->    
-    <aside class="sidebar" aria-label="Навигация">
-      <div class="sidebar__brand">
-        <div class="logo" aria-hidden="true"></div>
-        <div>
-          <div class="brand__title">Проверки</div>
-          <div class="brand__subtitle">web-прототип</div>
-        </div>
-      </div>
+  <div id="appRoot" aria-live="polite"></div>
 
-      <nav class="nav">
-        <a class="nav__item" href="#/home" data-route="home">
-          <span class="nav__dot" aria-hidden="true"></span>
-          Главная
-        </a>
+  <script>
+    (async function bootstrapPage() {
+      const appRoot = document.getElementById("appRoot");
+      const fragments = [
+        "./partials/app-shell.html",
+        "./partials/check-modal.html",
+        "./partials/people-modals.html",
+      ];
 
-        <a class="nav__item" href="#/checks" data-route="checks">
-          <span class="nav__dot" aria-hidden="true"></span>
-          Проверки
-        </a>
+      async function loadFragment(path) {
+        const response = await fetch(path, { cache: "no-cache" });
+        if (!response.ok) {
+          throw new Error(`Не удалось загрузить фрагмент: ${path}`);
+        }
+        return response.text();
+      }
 
-        <a class="nav__item" href="#/admin" data-route="admin">
-          <span class="nav__dot" aria-hidden="true"></span>
-          Админ-панель
-        </a>
-      </nav>
+      function appendScript(src) {
+        return new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = src;
+          script.onload = resolve;
+          script.onerror = reject;
+          document.body.appendChild(script);
+        });
+      }
 
-      <div class="sidebar__footer">
-        <div class="muted">v0.1 • UI scaffold</div>
-      </div>
-    </aside>
+      try {
+        const html = await Promise.all(fragments.map(loadFragment));
+        appRoot.innerHTML = html.join("\n");
 
-    <!-- Main -->
-    <main class="main">
-      <header class="topbar">
-        <div class="topbar__left">
-          <h1 class="page-title" id="pageTitle">Главная</h1>
-          <div class="page-subtitle" id="pageSubtitle">Быстрые действия</div>
-        </div>
+        const scripts = [
+          "./assets/js/app.js",
+          "./assets/js/verification-areas.js",
+          "./assets/js/people-modal.js",
+          "./assets/js/checks.js",
+          "./assets/js/new-check-modal.js",
+          "./assets/js/inspection-window.js",
+        ];
 
-        <div class="topbar__right">
-          <div class="user-chip" id="userChip" hidden>
-            <span class="user-chip__label">Пользователь:</span>
-            <span class="user-chip__name" id="userName">—</span>
-          </div>
-          <button class="btn btn--ghost" id="btnAuth" type="button">Вход</button>
-        </div>
-      </header>
+        for (const src of scripts) {
+          await appendScript(src);
+        }
 
-      <section class="workspace">
-        <!-- HOME -->
-        <div class="page" id="page-home" data-page="home">
-          <div class="home-layout">
-            <div class="home-actions">
-              <button class="action-tile" id="btnNewCheck" type="button">
-                <div class="action-tile__title">Новая проверка</div>
-                <div class="action-tile__desc">Создать новую запись проверки</div>
-              </button>
-
-              <button class="action-tile" id="btnChecks" type="button">
-                <div class="action-tile__title">Проверки</div>
-                <div class="action-tile__desc">Открыть список проверок</div>
-              </button>
-            </div>
-
-            <div class="home-canvas" aria-label="Пустое рабочее поле">
-            </div>
-          </div>
-        </div>
-
-        <!-- ORGS -->
-        <div class="page" id="page-orgs" data-page="orgs" hidden>
-          <div class="placeholder">
-            <div class="placeholder__title">Организации</div>
-            <div class="placeholder__text">Пока пусто.</div>
-          </div>
-        </div>
-
-        <!-- CHECKS -->
-        <div class="page" id="page-checks" data-page="checks" hidden>
-          <div class="panel">
-            <div class="panel__title">Список проверок</div>
-            <div class="panel__body">
-              <div class="inline">
-                <button class="btn btn--primary" type="button" id="btnNewCheckFromList">Новая проверка</button>
-                <div class="hint">Данные загружаются с сервера.</div>
-              </div>
-              <div class="filters" id="checksFilters">
-                <div class="filters__row">
-                  <label class="field">
-                    <span class="field__label">Поиск</span>
-                    <input class="input" id="checksSearch" placeholder="№, организация, адрес, приказ..." />
-                  </label>
-                  <label class="field">
-                    <span class="field__label">Форма проверки</span>
-                    <input class="input" id="checksFormTypeFilter" placeholder="Плановая" />
-                  </label>
-                  <label class="field">
-                    <span class="field__label">№ приказа</span>
-                    <input class="input" id="checksOrderNoFilter" placeholder="123" />
-                  </label>
-                  <label class="field">
-                    <span class="field__label">Дата приказа</span>
-                    <input class="input" type="date" id="checksOrderDateFilter" />
-                  </label>
-                </div>
-                <div class="filters__row">
-                  <label class="field">
-                    <span class="field__label">Адрес</span>
-                    <input class="input" id="checksAddressFilter" placeholder="Город, улица" />
-                  </label>
-                  <label class="field">
-                    <span class="field__label">Создал(а)</span>
-                    <input class="input" id="checksCreatedByFilter" placeholder="ФИО" />
-                  </label>
-                  <label class="field">
-                    <span class="field__label">Изменил(а)</span>
-                    <input class="input" id="checksUpdatedByFilter" placeholder="ФИО" />
-                  </label>
-                  <label class="field">
-                    <span class="field__label">Сортировка</span>
-                    <select class="input" id="checksSortField">
-                      <option value="created_at" selected>Дата создания</option>
-                      <option value="updated_at">Дата изменения</option>
-                      <option value="period_start">Дата начала</option>
-                      <option value="period_end">Дата окончания</option>
-                      <option value="number">№ проверки</option>
-                      <option value="org_name">Организация</option>
-                      <option value="form_type">Форма проверки</option>
-                    </select>
-                  </label>
-                  <label class="field">
-                    <span class="field__label">Направление</span>
-                    <select class="input" id="checksSortDirection">
-                      <option value="desc" selected>Сначала новые</option>
-                      <option value="asc">Сначала старые</option>
-                    </select>
-                  </label>
-                </div>
-                <div class="filters__row filters__row--dates">
-                  <div class="filters__group">
-                    <div class="filters__group-title">Проведение проверки</div>
-                    <div class="filters__group-fields">
-                      <label class="field">
-                        <span class="field__label">С</span>
-                        <input class="input" type="date" id="checksPeriodFrom" />
-                      </label>
-                      <label class="field">
-                        <span class="field__label">По</span>
-                        <input class="input" type="date" id="checksPeriodTo" />
-                      </label>
-                    </div>
-                  </div>
-                  <div class="filters__group">
-                    <div class="filters__group-title">Создание</div>
-                    <div class="filters__group-fields">
-                      <label class="field">
-                        <span class="field__label">С</span>
-                        <input class="input" type="date" id="checksCreatedFrom" />
-                      </label>
-                      <label class="field">
-                        <span class="field__label">По</span>
-                        <input class="input" type="date" id="checksCreatedTo" />
-                      </label>
-                    </div>
-                  </div>
-                  <div class="filters__group">
-                    <div class="filters__group-title">Изменение</div>
-                    <div class="filters__group-fields">
-                      <label class="field">
-                        <span class="field__label">С</span>
-                        <input class="input" type="date" id="checksUpdatedFrom" />
-                      </label>
-                      <label class="field">
-                        <span class="field__label">По</span>
-                        <input class="input" type="date" id="checksUpdatedTo" />
-                      </label>
-                    </div>
-                  </div>
-                  <button class="btn btn--ghost filters__reset" type="button" id="checksResetFilters">Сбросить фильтры</button>
-                </div>
-              </div>
-              <div class="list" id="checksList"></div>
-              <div class="list__empty" id="checksEmpty" hidden>Проверок пока нет.</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- SETTINGS -->
-        <div class="page" id="page-settings" data-page="settings" hidden>
-          <div class="placeholder">
-            <div class="placeholder__title">Настройки</div>
-            <div class="placeholder__text">Пока пусто.</div>
-          </div>
-        </div>
-
-        <!-- ADMIN -->
-        <div class="page" id="page-admin" data-page="admin" hidden>
-          <div class="admin-layout">
-            <section class="panel">
-              <div class="panel__title">Добавление пользователя</div>
-              <div class="panel__body">
-                <label class="field">
-                  <span class="field__label">ФИО</span>
-                  <input class="input" id="adminUserName" placeholder="Иванов Иван Иванович" />
-                </label>
-                <label class="field">
-                  <span class="field__label">Логин</span>
-                  <input class="input" id="adminUserLogin" placeholder="ivanov" />
-                </label>
-                <label class="field">
-                  <span class="field__label">Пароль</span>
-                  <input class="input" id="adminUserPassword" placeholder="Пароль для входа" />
-                </label>
-                <label class="field">
-                  <span class="field__label">Роль</span>
-                  <select class="input" id="adminUserRole">
-                    <option value="user" selected>Пользователь</option>
-                    <option value="admin">Администратор</option>
-                    <option value="no_access">Нет прав</option>
-                  </select>
-                </label>
-                <button class="btn btn--primary" id="adminAddUserBtn" type="button">Добавить</button>
-                <div class="hint">Логины и пароли выдаются в админке.</div>
-              </div>
-            </section>
-
-            <section class="panel">
-              <div class="panel__title">Назначение роли</div>
-              <div class="panel__body">
-                <div class="field">
-                  <span class="field__label">Пользователь</span>
-                  <select class="input" id="adminUserSelect"></select>
-                </div>
-                <div class="field">
-                  <span class="field__label">Роль</span>
-                  <select class="input" id="adminRoleSelect">
-                    <option value="user">Пользователь</option>
-                    <option value="admin">Администратор</option>
-                    <option value="no_access">Нет прав</option>
-                  </select>
-                </div>
-                <button class="btn" id="adminAssignRoleBtn" type="button">Выдать права</button>
-                <div class="hint">Доступы обновляются для выбранного пользователя.</div>
-              </div>
-            </section>
-
-            <section class="panel">
-              <div class="panel__title">Список пользователей</div>
-              <div class="panel__body">
-                <div class="list" id="adminUserList"></div>
-              </div>
-            </section>
-          </div>
-        </div>
-      </section>
-    </main>
-  </div>
-
-  <div class="dialog-backdrop" id="dialogBackdrop" hidden>
-    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
-      <div class="dialog__head">
-        <div class="dialog__title" id="dialogTitle">Сообщение</div>
-        <button class="icon-btn" id="dialogClose" type="button" aria-label="Закрыть">✕</button>
-      </div>
-      <div class="dialog__body" id="dialogBody"></div>
-      <div class="dialog__actions">
-        <button class="btn btn--primary" id="dialogOk" type="button">ОК</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal-backdrop" id="authModalBackdrop" hidden>
-    <div class="modal modal--sm" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
-      <div class="modal__head">
-        <div class="modal__title" id="authModalTitle">Вход</div>
-        <button class="icon-btn" id="authModalClose" type="button" aria-label="Закрыть">✕</button>
-      </div>
-      <form class="modal__body" id="authForm">
-        <label class="field">
-          <span class="field__label">Логин</span>
-          <input class="input" id="authLogin" autocomplete="username" />
-        </label>
-        <label class="field">
-          <span class="field__label">Пароль</span>
-          <input class="input" id="authPassword" type="password" autocomplete="current-password" />
-        </label>
-        <div class="hint" id="authStatus" role="status" aria-live="polite"></div>
-        <div class="modal__foot">
-          <button class="btn btn--primary" type="submit">Войти</button>
-          <button class="btn" id="authModalCancel" type="button">Отмена</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <div class="modal-backdrop" id="downloadModalBackdrop" hidden>
-    <div class="modal modal--sm" role="dialog" aria-modal="true" aria-labelledby="downloadModalTitle">
-      <div class="modal__head">
-        <div class="modal__title" id="downloadModalTitle">Скачать</div>
-        <button class="icon-btn" id="downloadModalClose" type="button" aria-label="Закрыть">✕</button>
-      </div>
-      <div class="modal__body">
-        <div class="download-options">
-          <button class="btn btn--primary" type="button">PDF</button>
-          <button class="btn" type="button">DOCX</button>
-        </div>
-        <div class="hint">Пока это только выбор формата.</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: Новая проверка -->
-<div class="modal-backdrop" id="checkModalBackdrop" hidden>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="checkModalTitle">
-    <div class="modal__head">
-      <div class="modal__title" id="checkModalTitle">Новая проверка</div>
-      <button class="icon-btn" id="checkModalClose" type="button" aria-label="Закрыть">✕</button>
-    </div>
-
-    <form class="modal__body" id="checkForm">
-      <!-- Общие сведения -->
-      <section class="form-section">
-        <div class="form-section__title">Общие сведения об организации</div>
-
-        <div class="grid-1">
-          <label class="field">
-            <span class="field__label">ОГРН</span>
-            <input class="input" name="ogrn" inputmode="numeric" placeholder="" />
-          </label>
-        </div>
-
-        <label class="field">
-          <span class="field__label">Наименование</span>
-          <input class="input" name="orgName" placeholder="" />
-        </label>
-
-        <label class="field">
-          <span class="field__label">Сокращенное наименование</span>
-          <input class="input" name="orgShortName" placeholder="" />
-        </label>
-      </section>
-
-      <!-- Адрес -->
-      <section class="form-section">
-        <div class="form-section__title">Адрес организации</div>
-
-        <div class="grid-1">
-          <label class="field">
-            <span class="field__label">Юридический адрес</span>
-            <input class="input" name="legal_adress" />
-          </label>
-        </div>
-
-        <div class="grid-1">
-          <label class="field">
-            <span class="field__label">Почтовый адрес</span>
-            <input class="input" name="email" />
-          </label>
-        </div>
-      </section>
-
-      <!-- Руководитель -->
-      <section class="form-section">
-        <div class="form-section__title">Сведения о руководителе</div>
-
-        <div class="grid-4">
-          <label class="field">
-            <span class="field__label">Должность</span>
-            <select class="input" name="bossRole">
-              <option value="" selected>—</option>
-              <option>главный врач</option>
-              <option>директор</option>
-              <option>руководитель</option>
-            </select>
-          </label>
-
-          <label class="field">
-            <span class="field__label">Имя Отчество</span>
-            <input class="input" name="bossNamePatronymic" />
-          </label>
-
-          <label class="field">
-            <span class="field__label">Фамилия</span>
-            <input class="input" name="bossLastName" />
-          </label>
-
-          <label class="field">
-            <span class="field__label">Фамилия (кому?)</span>
-            <input class="input" name="bossLastNameTo" />
-          </label>
-        </div>
-      </section>
-
-      <!-- Проверка -->
-      <section class="form-section">
-        <div class="form-section__title">Сведения о проверке</div>
-
-        <div class="grid-4">
-          <label class="field">
-            <span class="field__label">Форма проверки</span>
-            <select class="input" name="checkFormType">
-              <option value="" selected>—</option>
-              <option>плановая документарная</option>
-              <option>плановая выездная</option>
-              <option>внеплановая документарная</option>
-              <option>внеплановая выездная</option>
-            </select>
-          </label>
-
-          <label class="field">
-            <span class="field__label">№ приказа МЗЧО</span>
-            <input class="input" name="mzOrderNo" value="845" />
-          </label>
-
-          <label class="field">
-            <span class="field__label">Дата приказа МЗЧО</span>
-            <input class="input" name="mzOrderDate" type="date" />
-          </label>
-
-          <label class="field">
-            <span class="field__label">№ проверки</span>
-            <input class="input" name="checkNo" inputmode="numeric" />
-          </label>
-        </div>
-
-        <div class="grid-4">
-          <label class="field">
-            <span class="field__label">Начало проверки</span>
-            <input class="input" name="startDate" type="date" />
-          </label>
-
-          <label class="field">
-            <span class="field__label">Окончание проверки</span>
-            <input class="input" name="endDate" type="date" />
-          </label>
-
-          <label class="field">
-            <span class="field__label">Дней</span>
-            <input class="input" name="days" inputmode="numeric" />
-          </label>
-
-          <label class="field">
-            <span class="field__label">№ приказа, письма</span>
-            <div class="grid-2-tight">
-              <input class="input" name="letterNoLeft" placeholder="о/д" />
-              <input class="input" name="letterNoRight" placeholder="" />
-            </div>
-          </label>
-        </div>
-
-        <div class="grid-2">
-          <label class="field">
-            <span class="field__label">Дата приказа, письма</span>
-            <input class="input" name="letterDate" type="date" />
-          </label>
-
-          <label class="field">
-            <span class="field__label">По адресу(ам) без индекса</span>
-            <input class="input" name="addressNoIndex" />
-          </label>
-        </div>
-
-        <label class="field">
-          <span class="field__label">Представитель (ФИО, должность)</span>
-          <input class="input" name="representative" />
-        </label>
-
-        <div class="grid-2 actions-right">
-          <label class="field">
-            <span class="field__label">Уполномоченные на проведение проверки</span>
-            <div class="field-with-btn">
-              <input class="input" id="authorizedPeople" name="inspectors" />
-              <button class="btn" type="button" id="authorizedPickBtn">Выбрать</button>
-            </div>
-          </label>
-
-          <label class="field">
-            <span class="field__label">Подписи уполномоченных в акте</span>
-            <div class="field-with-btn">
-              <input class="input" id="signaturesPeople" name="signs" />
-              <button class="btn" type="button" id="signaturesPickBtn">Выбрать</button>
-            </div>
-          </label>
-        </div>
-      </section>
-
-      <div class="modal__foot">
-        <button class="btn btn--primary" type="submit">СОХРАНИТЬ</button>
-        <button class="btn" type="button" id="checkModalCancel">Отмена</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Modal: Выбор уполномоченных -->
-<div class="modal-backdrop" id="peopleModalBackdrop" hidden>
-  <div class="modal modal--md" role="dialog" aria-modal="true" aria-labelledby="peopleModalTitle">
-    <div class="modal__head">
-      <div class="modal__title" id="peopleModalTitle">Выбор уполномоченных</div>
-      <button class="icon-btn" id="peopleModalClose" type="button" aria-label="Закрыть">✕</button>
-    </div>
-
-    <div class="modal__body">
-      <div class="hint">Выберите людей из списка. Управление списком — через «Изменить».</div>
-      <div class="list" id="peopleCheckboxList" aria-label="Список уполномоченных с чекбоксами"></div>
-    </div>
-
-    <div class="modal__actions">
-      <button class="btn" id="peopleEditBtn" type="button">Изменить</button>
-      <button class="btn" id="peopleCancelBtn" type="button">Отмена</button>
-      <button class="btn btn--primary" id="peopleApplyBtn" type="button">Применить</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal: Управление списком уполномоченных -->
-<div class="modal-backdrop" id="peopleManageBackdrop" hidden>
-  <div class="modal modal--md" role="dialog" aria-modal="true" aria-labelledby="peopleManageTitle">
-    <div class="modal__head">
-      <div class="modal__title" id="peopleManageTitle">Изменить список уполномоченных</div>
-      <button class="icon-btn" id="peopleManageClose" type="button" aria-label="Закрыть">✕</button>
-    </div>
-
-    <div class="modal__body">
-      <div class="field">
-        <label class="label" for="peopleNameInput">ФИО</label>
-        <div class="inline">
-          <input class="input" id="peopleNameInput" type="text" placeholder="Иванов Иван Иванович" />
-          <button class="btn btn--primary" id="peopleAddBtn" type="button">Добавить</button>
-        </div>
-        <div class="hint">Добавляй по одному ФИО. Удаление — кнопкой «Убрать».</div>
-      </div>
-
-      <div class="list" id="peopleManageList" aria-label="Список уполномоченных для редактирования"></div>
-    </div>
-
-    <div class="modal__actions">
-      <button class="btn" id="peopleManageCancelBtn" type="button">Готово</button>
-    </div>
-  </div>
-</div>
-
-
-  <script src="./assets/js/app.js"></script>
-  <script src="assets/js/people-modal.js"></script>
-  <script src="./assets/js/checks.js"></script>
-  <script src="./assets/js/new-check-modal.js"></script>
+        if (window.AppRouter?.init) {
+          window.AppRouter.init();
+        }
+      } catch (error) {
+        console.error(error);
+        appRoot.textContent = "Ошибка загрузки интерфейса.";
+      }
+    })();
+  </script>
 </body>
 </html>

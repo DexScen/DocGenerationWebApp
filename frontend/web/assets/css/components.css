@@ -1,4 +1,3 @@
-/* Nav items */
 .nav__item{
   display: flex;
   align-items: center;
@@ -218,8 +217,56 @@
 
 .admin-layout{
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.admin-section{
+  display: grid;
   gap: 16px;
+}
+
+.admin-section__title{
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.admin-section .admin-grid-2{
+  margin-top: 0;
+  gap: 16px;
+}
+
+.admin-stack{
+  display: grid;
+  gap: 16px;
+}
+
+.admin-grid-2--wide{
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+}
+
+.admin-tabs{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.admin-tab{
+  border: 1px solid var(--border);
+  background: #fff;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  text-transform: none;
+}
+
+.admin-tab.is-active{
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #fff;
 }
 
 .panel{
@@ -247,4 +294,168 @@
   text-transform: uppercase;
   letter-spacing: 0.4px;
   color: var(--muted);
+}
+
+
+.admin-grid-3{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.admin-grid-2{
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1100px){
+  .admin-grid-3{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px){
+  .admin-grid-3, .admin-grid-2{ grid-template-columns: 1fr; }
+}
+
+.verification-areas-table-wrap{
+  overflow-x: auto;
+}
+
+.verification-areas-table{
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 860px;
+}
+
+.verification-areas-table th,
+.verification-areas-table td{
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  vertical-align: top;
+  background: #fff;
+}
+
+.verification-areas-table th{
+  background: #f6f8fb;
+  text-align: left;
+  font-size: 13px;
+}
+
+.verification-areas-table__lvl1{
+  font-weight: 700;
+  background: #fbfcff;
+}
+
+.verification-areas-table__lvl2{
+  font-weight: 600;
+}
+
+.verification-areas-table__lvl4{
+  padding: 0;
+}
+
+.verification-areas-table__templates{
+  display: grid;
+  height: 100%;
+  min-height: 100%;
+}
+
+.verification-areas-table__template-item{
+  padding: 10px 12px;
+}
+
+.verification-areas-table__template-item + .verification-areas-table__template-item{
+  border-top: 1px solid var(--border);
+}
+
+.verification-areas-table__template-editor{
+  display: grid;
+  gap: 8px;
+}
+
+.verification-areas-table__template-input{
+  width: 100%;
+}
+
+.verification-areas-table__tag-buttons{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.verification-areas-table__tag-button{
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  text-transform: none;
+}
+
+.verification-areas-table__tag-button.is-active{
+  border-color: var(--blue);
+  background: #eef4ff;
+  color: #245cb8;
+}
+
+.verification-areas-table__tags{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.verification-areas-table__tag{
+  text-transform: none;
+}
+
+.verification-areas-table__cell-content{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.verification-areas-table__cell-text{
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.verification-areas-table__cell-actions{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.verification-areas-table__btn{
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.verification-areas-table__btn:hover{
+  border-color: #8fa6cf;
+}
+
+.verification-areas-table__btn--danger{
+  color: #b43737;
+  border-color: #d9a5a5;
+}
+
+.verification-areas-table__empty{
+  text-align: center;
+  background: #fbfcff;
+}
+
+.verification-area-name-modal{
+  width: min(680px, 100%);
+}
+
+.verification-area-name-modal__body{
+  gap: 14px;
 }

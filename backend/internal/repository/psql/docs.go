@@ -6,7 +6,7 @@ import (
 
 	"github.com/DexScen/DocGenerationWebApp/backend/internal/domain"
 	e "github.com/DexScen/DocGenerationWebApp/backend/internal/errors"
-	_ "github.com/lib/pq"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 type Docs struct {
@@ -68,7 +68,7 @@ func (d *Docs) PostNewOrganization(ctx context.Context, org domain.Organization)
 		INSERT INTO organizations
 			(full_name, short_name, ogrn, legal_address, postal_address, created_at, updated_at)
 		VALUES
-			($1, $2, $3, $4, $5, now(), now())
+			(?, ?, ?, ?, ?, now(), now())
 	`
 
 	_, err := d.db.ExecContext(ctx, query,
@@ -95,7 +95,7 @@ func (d *Docs) GetLeadersByOrgID(ctx context.Context, orgID int) ([]domain.Leade
             created_at,
             updated_at
         FROM leader
-        WHERE organization_id = $1
+        WHERE organization_id = ?
     `
 
 	rows, err := d.db.QueryContext(ctx, query, orgID)
@@ -146,12 +146,11 @@ func (d *Docs) PostLeaderByOrgID(ctx context.Context, leader domain.Leader, org_
             created_at,
             updated_at
         ) VALUES (
-            $1, $2, $3, $4, $5, $6, $7, NOW(), NOW()
+            ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()
         )
     `
 
-	var id int64
-	err := d.db.QueryRowContext(ctx, query,
+	_, err := d.db.ExecContext(ctx, query,
 		org_id,
 		leader.Position,
 		leader.LastName,
@@ -159,19 +158,14 @@ func (d *Docs) PostLeaderByOrgID(ctx context.Context, leader domain.Leader, org_
 		leader.MiddleName,
 		leader.InitialsNameIm,
 		leader.InitialsNameDat,
-	).Scan(&id)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	)
+	return err
 }
 
 func (d *Docs) DeleteOrganizationByID(ctx context.Context, org_id int) error {
 	query := `
         DELETE FROM organizations
-        WHERE id = $1
+        WHERE id = ?
     `
 
 	res, err := d.db.ExecContext(ctx, query, org_id)
@@ -194,7 +188,7 @@ func (d *Docs) DeleteOrganizationByID(ctx context.Context, org_id int) error {
 func (d *Docs) DeleteLeaderByID(ctx context.Context, id int) error {
 	query := `
         DELETE FROM leader
-        WHERE id = $1
+        WHERE id = ?
     `
 
 	res, err := d.db.ExecContext(ctx, query, id)
@@ -218,13 +212,13 @@ func (d *Docs) PutOrganizationByID(ctx context.Context, org domain.Organization,
 	query := `
         UPDATE organizations
         SET
-            full_name = $1,
-            short_name = $2,
-            ogrn = $3,
-            legal_address = $4,
-            postal_address = $5,
+            full_name = ?,
+            short_name = ?,
+            ogrn = ?,
+            legal_address = ?,
+            postal_address = ?,
             updated_at = NOW()
-        WHERE id = $6
+        WHERE id = ?
     `
 
 	res, err := d.db.ExecContext(ctx, query,
@@ -267,7 +261,7 @@ func (d *Docs) GetAllInspectionsForHistory(
             o.full_name
         FROM inspection i
         JOIN organizations o ON o.id = i.organization_id
-        ORDER BY i.date_start DESC NULLS LAST, i.created_at DESC
+        ORDER BY (i.date_start IS NULL) ASC, i.date_start DESC, i.created_at DESC
     `
 
 	rows, err := d.db.QueryContext(ctx, query)
@@ -330,7 +324,7 @@ func (d *Docs) GetInspectionByID(
             duration_work_days,
             representative_document
         FROM inspection
-        WHERE id = $1
+        WHERE id = ?
     `
 
 	err := d.db.QueryRowContext(ctx, query, id).Scan(
@@ -358,7 +352,7 @@ func (d *Docs) GetInspectionByID(
 	// --- addresses ---
 	rows, err := d.db.QueryContext(
 		ctx,
-		`SELECT id, inspection_id, address FROM inspection_addresses WHERE inspection_id = $1`,
+		`SELECT id, inspection_id, address FROM inspection_addresses WHERE inspection_id = ?`,
 		id,
 	)
 	if err != nil {
@@ -377,7 +371,7 @@ func (d *Docs) GetInspectionByID(
 	// --- authorized persons ---
 	rows, err = d.db.QueryContext(
 		ctx,
-		`SELECT id, inspection_id, full_name FROM inspection_authorized_persons WHERE inspection_id = $1`,
+		`SELECT id, inspection_id, full_name FROM inspection_authorized_persons WHERE inspection_id = ?`,
 		id,
 	)
 	if err != nil {
@@ -396,7 +390,7 @@ func (d *Docs) GetInspectionByID(
 	// --- signatories ---
 	rows, err = d.db.QueryContext(
 		ctx,
-		`SELECT id, inspection_id, full_name FROM inspection_signatories WHERE inspection_id = $1`,
+		`SELECT id, inspection_id, full_name FROM inspection_signatories WHERE inspection_id = ?`,
 		id,
 	)
 	if err != nil {
@@ -415,7 +409,7 @@ func (d *Docs) GetInspectionByID(
 	// --- representatives ---
 	rows, err = d.db.QueryContext(
 		ctx,
-		`SELECT id, inspection_id, full_name FROM inspection_representatives WHERE inspection_id = $1`,
+		`SELECT id, inspection_id, full_name FROM inspection_representatives WHERE inspection_id = ?`,
 		id,
 	)
 	if err != nil {

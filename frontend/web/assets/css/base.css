@@ -29,6 +29,11 @@ html, body{
   height: 100%;
 }
 
+html.is-dialog-open,
+body.is-dialog-open{
+  overflow: hidden;
+}
+
 body{
   margin: 0;
   font-family: var(--font);
@@ -179,4 +184,67 @@ h1{
 .filters__reset{
   align-self: stretch;
   height: auto;
+}
+
+.pagination{
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pagination__group{
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.pagination .btn{
+  height: 32px;
+  padding: 0 12px;
+}
+
+.pagination__summary{
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pagination__page{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination__label{
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pagination__input{
+  width: 90px;
+}
+
+.pagination__input--page{
+  width: 72px;
+}
+
+.pagination__select{
+  min-width: 90px;
+}
+
+.pagination__group--size .pagination__select,
+.pagination__group--size .pagination__input--size{
+  min-width: 70px;
+  width: 70px;
+}
+
+.pagination__total{
+  font-size: 12px;
+  color: var(--muted);
 }

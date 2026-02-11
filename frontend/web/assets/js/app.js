@@ -1,33 +1,75 @@
-(function () {
-  const ROUTES = ["home", "orgs", "checks", "settings", "admin"];
+(function initModalScrollLock() {
+  let openCount = 0;
 
-  const pageTitle = document.getElementById("pageTitle");
-  const pageSubtitle = document.getElementById("pageSubtitle");
+  function lock() {
+    openCount += 1;
+    document.documentElement.classList.add("is-dialog-open");
+  }
 
-  const navItems = Array.from(document.querySelectorAll(".nav__item"));
-  const pages = Array.from(document.querySelectorAll("[data-page]"));
+  function unlock() {
+    openCount = Math.max(0, openCount - 1);
+    if (openCount === 0) {
+      document.documentElement.classList.remove("is-dialog-open");
+    }
+  }
 
-  document.getElementById("btnChecks").addEventListener("click", () => {
-    location.hash = "#/checks";
-  });
+  window.ModalScroll = {
+    lock,
+    unlock,
+  };
+})();
 
-  function getRouteFromHash() {
-    const h = (location.hash || "#/home").replace("#/", "");
-    const route = h.split("?")[0].trim();
-    return ROUTES.includes(route) ? route : "home";
+(function initRouterModule() {
+  const ROUTES = ["home", "orgs", "checks", "verification-areas", "settings", "employees", "admin"];
+
+  let isInitialized = false;
+
+  function getRouterDomRefs() {
+    return {
+      pageTitle: document.getElementById("pageTitle"),
+      pageSubtitle: document.getElementById("pageSubtitle"),
+      navItems: Array.from(document.querySelectorAll(".nav__item")),
+      pages: Array.from(document.querySelectorAll("[data-page]")),
+    };
+  }
+
+  function normalizeRoute(rawRoute) {
+    const route = String(rawRoute || "")
+      .replace(/^#/, "")
+      .replace(/^\//, "")
+      .split("?")[0]
+      .trim();
+
+    return ROUTES.includes(route) ? route : "";
+  }
+
+  function getRouteFromLocation() {
+    const hashRoute = normalizeRoute(location.hash);
+    if (hashRoute) return hashRoute;
+
+    const pathRoute = normalizeRoute(location.pathname);
+    if (pathRoute) return pathRoute;
+
+    return "checks";
   }
 
   function setActiveRoute(route) {
+    const { pageTitle, pageSubtitle, navItems, pages } = getRouterDomRefs();
+
+    if (!pages.length) {
+      return;
+    }
+
     const isLoggedIn = window.AuthState?.isLoggedIn?.() ?? false;
     const isAdmin = window.AuthState?.isAdmin?.() ?? false;
     let nextRoute = route;
 
     if (!isLoggedIn) {
-      nextRoute = "home";
+      nextRoute = "checks";
     }
 
-    if (nextRoute === "admin" && !isAdmin) {
-      nextRoute = "home";
+    if ((nextRoute === "admin" || nextRoute === "employees") && !isAdmin) {
+      nextRoute = "checks";
     }
 
     pages.forEach((p) => (p.hidden = p.getAttribute("data-page") !== nextRoute));
@@ -42,24 +84,61 @@
       home: { t: "Главная", s: "Быстрые действия" },
       orgs: { t: "Организации", s: "Список и карточки (в следующем шаге)" },
       checks: { t: "Проверки", s: "Список проверок" },
+      "verification-areas": { t: "Области проверки", s: "" },
       settings: { t: "Настройки", s: "Параметры приложения" },
-      admin: { t: "Админ-панель", s: "Управление пользователями (заглушка)" },
+      employees: { t: "Сотрудники", s: "Справочник сотрудников" },
+      admin: { t: "Админ-панель", s: "" },
     };
 
-    pageTitle.textContent = map[nextRoute].t;
-    pageSubtitle.textContent = map[nextRoute].s;
+    if (pageTitle && map[nextRoute]) {
+      pageTitle.textContent = map[nextRoute].t;
+    }
+    if (pageSubtitle && map[nextRoute]) {
+      pageSubtitle.textContent = map[nextRoute].s;
+    }
   }
 
   function syncRoute() {
-    setActiveRoute(getRouteFromHash());
+    const route = getRouteFromLocation();
+
+    if (location.hash !== `#/${route}`) {
+      location.hash = `#/${route}`;
+      return;
+    }
+
+    setActiveRoute(route);
   }
 
-  window.addEventListener("hashchange", syncRoute);
-  window.addEventListener("auth:changed", syncRoute);
+  function bindRouterHandlers() {
+    if (isInitialized) return;
+    isInitialized = true;
 
+    window.addEventListener("hashchange", syncRoute);
+    window.addEventListener("auth:changed", syncRoute);
 
-  if (!location.hash) location.hash = "#/home";
-  syncRoute();
+    const checksShortcutBtn = document.getElementById("btnChecks");
+    if (checksShortcutBtn) {
+      checksShortcutBtn.addEventListener("click", () => {
+        location.hash = "#/checks";
+      });
+    }
+  }
+
+  function init() {
+    bindRouterHandlers();
+
+    if (!location.hash && !normalizeRoute(location.pathname)) {
+      location.hash = "#/checks";
+    }
+
+    syncRoute();
+  }
+
+  window.AppRouter = {
+    init,
+    syncRoute,
+  };
+  init();
 })();
 
 (function initDialog() {
@@ -76,14 +155,14 @@
 
     if (body) body.textContent = "";
     if (title) title.textContent = "Сообщение";
-    document.documentElement.classList.remove("is-dialog-open");
+    window.ModalScroll?.unlock?.();
   }
 
   function openDialog(message, dialogTitle) {
     if (body) body.textContent = message ?? "";
     if (title) title.textContent = dialogTitle || "Сообщение";
     backdrop.hidden = false;
-    document.documentElement.classList.add("is-dialog-open");
+    window.ModalScroll?.lock?.();
   }
 
 
@@ -140,6 +219,7 @@
   const userChip = document.getElementById("userChip");
   const userNameEl = document.getElementById("userName");
   const adminNavItem = document.querySelector('.nav__item[data-route="admin"]');
+  const employeesNavItem = document.querySelector('.nav__item[data-route="employees"]');
 
   const authBackdrop = document.getElementById("authModalBackdrop");
   const authCloseBtn = document.getElementById("authModalClose");
@@ -158,6 +238,13 @@
   const userSelectEl = document.getElementById("adminUserSelect");
   const roleSelectEl = document.getElementById("adminRoleSelect");
   const assignRoleBtn = document.getElementById("adminAssignRoleBtn");
+  const adminTabs = Array.from(document.querySelectorAll("[data-admin-tab]"));
+  const adminPanels = Array.from(document.querySelectorAll("[data-admin-panel]"));
+
+  const addEmployeeBtn = document.getElementById("adminAddEmployeeBtn");
+  const employeeNameInput = document.getElementById("adminEmployeeName");
+  const employeeListEl = document.getElementById("adminEmployeeList");
+  const employeesListViewEl = document.getElementById("employeesList");
 
   const authState = {
     isLoggedIn: false,
@@ -178,6 +265,7 @@
   }
 
   let users = [];
+  let employees = [];
 
   async function loadUsers() {
     try {
@@ -197,6 +285,19 @@
       return await window.Api.request("/auth/me");
     } catch (error) {
       return null;
+    }
+  }
+
+  async function loadEmployees() {
+    try {
+      const list = await window.Api.request("/employees");
+      return Array.isArray(list) ? list : [];
+    } catch (error) {
+      console.warn("Не удалось загрузить сотрудников", error);
+      if (window.AppDialog?.openDialog) {
+        window.AppDialog.openDialog("Нет доступа к списку сотрудников.", "Админ-панель");
+      }
+      return [];
     }
   }
 
@@ -223,12 +324,29 @@
     if (adminNavItem) {
       adminNavItem.hidden = !authState.isLoggedIn || !isAdmin;
     }
+    if (employeesNavItem) {
+      employeesNavItem.hidden = !authState.isLoggedIn || !isAdmin;
+    }
     if (!isAdmin && location.hash.includes("/admin")) {
-      location.hash = "#/home";
+      location.hash = "#/checks";
+    }
+    if (!isAdmin && location.hash.includes("/employees")) {
+      location.hash = "#/checks";
     }
 
     setAuthLockState(!authState.isLoggedIn);
     window.dispatchEvent(new CustomEvent("auth:changed", { detail: authState.user }));
+  }
+
+  function setAdminTab(tabName) {
+    adminPanels.forEach((panel) => {
+      panel.hidden = panel.getAttribute("data-admin-panel") !== tabName;
+    });
+    adminTabs.forEach((tab) => {
+      const isActive = tab.getAttribute("data-admin-tab") === tabName;
+      tab.classList.toggle("is-active", isActive);
+      tab.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
   }
 
   function setAuthStatus(message) {
@@ -303,7 +421,7 @@
   function openAuthModal() {
     if (!authBackdrop) return;
     authBackdrop.hidden = false;
-    document.documentElement.classList.add("is-dialog-open");
+    window.ModalScroll?.lock?.();
     if (authLoginInput) authLoginInput.focus();
     setAuthStatus("");
   }
@@ -312,7 +430,7 @@
     if (!authBackdrop) return;
     if (authState.isAuthLocked && !authState.isLoggedIn) return;
     authBackdrop.hidden = true;
-    document.documentElement.classList.remove("is-dialog-open");
+    window.ModalScroll?.unlock?.();
     if (authForm) authForm.reset();
     setAuthStatus("");
   }
@@ -391,9 +509,54 @@
     }
   }
 
+  async function handleAddEmployee() {
+    const name = (employeeNameInput?.value || "").trim();
+    if (!name) {
+      if (window.AppDialog?.openDialog) {
+        window.AppDialog.openDialog("Заполните ФИО сотрудника.", "Сотрудники");
+      } else {
+        alert("Заполните ФИО сотрудника.");
+      }
+      return;
+    }
+
+    try {
+      await window.Api.request("/employees", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
+      await refreshEmployees();
+    } catch (error) {
+      if (window.AppDialog?.openDialog) {
+        window.AppDialog.openDialog(error.message || "Ошибка сохранения сотрудника.", "Сотрудники");
+      }
+      return;
+    }
+
+    if (employeeNameInput) employeeNameInput.value = "";
+  }
+
+  async function handleDeleteEmployee(id) {
+    try {
+      await window.Api.request(`/employees/${id}`, { method: "DELETE" });
+      await refreshEmployees();
+    } catch (error) {
+      if (window.AppDialog?.openDialog) {
+        window.AppDialog.openDialog(error.message || "Ошибка удаления сотрудника.", "Сотрудники");
+      }
+    }
+  }
+
   if (authBtn) authBtn.addEventListener("click", handleAuthClick);
   if (addUserBtn) addUserBtn.addEventListener("click", handleAddUser);
   if (assignRoleBtn) assignRoleBtn.addEventListener("click", handleAssignRole);
+  if (addEmployeeBtn) addEmployeeBtn.addEventListener("click", handleAddEmployee);
+
+  adminTabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      setAdminTab(tab.getAttribute("data-admin-tab"));
+    });
+  });
 
   if (authCloseBtn) authCloseBtn.addEventListener("click", closeAuthModal);
   if (authCancelBtn) authCancelBtn.addEventListener("click", closeAuthModal);
@@ -418,6 +581,7 @@
         closeAuthModal();
         renderAuth();
         await refreshUsers();
+        await refreshEmployees();
       } catch (error) {
         if (error.status === 403) {
           setAuthStatus("Вы зарегистрированы в системе, но у вас нет прав для работы с ней.");
@@ -439,6 +603,51 @@
     renderUsers();
   }
 
+  async function refreshEmployees() {
+    employees = await loadEmployees();
+    renderEmployees();
+    window.dispatchEvent(new CustomEvent("employees:updated", { detail: employees }));
+  }
+
+  function renderEmployeesList(listElement, options = {}) {
+    if (!listElement) return;
+    listElement.innerHTML = "";
+
+    if (!employees.length) {
+      const empty = document.createElement("div");
+      empty.className = "list__empty";
+      empty.textContent = "Сотрудники пока не добавлены.";
+      listElement.appendChild(empty);
+      return;
+    }
+
+    employees.forEach((employeeItem) => {
+      const row = document.createElement("div");
+      row.className = "list__row";
+
+      const text = document.createElement("div");
+      text.textContent = employeeItem.name;
+
+      row.appendChild(text);
+
+      if (options.withActions) {
+        const del = document.createElement("button");
+        del.className = "btn";
+        del.type = "button";
+        del.textContent = "Удалить";
+        del.addEventListener("click", () => handleDeleteEmployee(employeeItem.id));
+        row.appendChild(del);
+      }
+
+      listElement.appendChild(row);
+    });
+  }
+
+  function renderEmployees() {
+    renderEmployeesList(employeeListEl, { withActions: true });
+    renderEmployeesList(employeesListViewEl, { withActions: false });
+  }
+
   async function initAuth() {
     const storedSession = await loadSession();
     if (storedSession) {
@@ -448,8 +657,13 @@
     renderAuth();
     if (authState.isLoggedIn) {
       await refreshUsers();
+      await refreshEmployees();
     } else {
       openAuthModal();
+    }
+
+    if (adminTabs.length) {
+      setAdminTab("users");
     }
   }
 
@@ -459,5 +673,10 @@
     getUser: () => authState.user,
     isAdmin: () => authState.user?.role === "admin",
     isLoggedIn: () => authState.isLoggedIn,
+  };
+
+  window.EmployeesStore = {
+    getEmployees: () => employees.slice(),
+    refresh: refreshEmployees,
   };
 })();

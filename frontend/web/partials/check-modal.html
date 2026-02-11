@@ -1,0 +1,187 @@
+  <!-- Modal: Новая проверка -->
+<div class="modal-backdrop" id="checkModalBackdrop" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="checkModalTitle">
+    <div class="modal__head">
+      <div class="modal__title" id="checkModalTitle">Новая проверка</div>
+      <button class="icon-btn" id="checkModalClose" type="button" aria-label="Закрыть">✕</button>
+    </div>
+
+    <form class="modal__body" id="checkForm">
+      <!-- Общие сведения -->
+      <section class="form-section">
+        <div class="form-section__title">Общие сведения об организации</div>
+
+        <div class="grid-1">
+          <label class="field">
+            <span class="field__label">ОГРН</span>
+            <input class="input" name="ogrn" inputmode="numeric" maxlength="13" placeholder="" />
+          </label>
+        </div>
+
+        <label class="field">
+          <span class="field__label">Наименование</span>
+          <input class="input" name="orgName" placeholder="" />
+        </label>
+
+        <label class="field">
+          <span class="field__label">Сокращенное наименование</span>
+          <input class="input" name="orgShortName" placeholder="" />
+        </label>
+      </section>
+
+      <!-- Адрес -->
+      <section class="form-section">
+        <div class="form-section__title">Адрес организации</div>
+
+        <div class="grid-1">
+          <label class="field">
+            <span class="field__label">Юридический адрес</span>
+            <input class="input" name="legal_adress" />
+          </label>
+        </div>
+
+        <div class="grid-1">
+          <label class="field">
+            <span class="field__label">Почтовый адрес</span>
+            <input class="input" name="email" />
+          </label>
+        </div>
+
+        <label class="field field-inline">
+          <input class="checkbox" type="checkbox" id="postalSame" />
+          <span class="field__label">Почтовый адрес совпадает с юридическим</span>
+        </label>
+      </section>
+
+      <!-- Руководитель -->
+      <section class="form-section">
+        <div class="form-section__title">Сведения о руководителе</div>
+
+        <div class="grid-4">
+          <label class="field">
+            <span class="field__label">Должность</span>
+            <input class="input" name="bossRole" list="bossRoleOptions" placeholder="Введите или выберите" />
+            <datalist id="bossRoleOptions">
+              <option value="главный врач"></option>
+              <option value="директор"></option>
+              <option value="начальник"></option>
+            </datalist>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Имя Отчество</span>
+            <input class="input" name="bossNamePatronymic" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Фамилия</span>
+            <input class="input" name="bossLastName" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Фамилия (кому?)</span>
+            <input class="input" name="bossLastNameTo" />
+          </label>
+        </div>
+      </section>
+
+      <!-- Проверка -->
+      <section class="form-section">
+        <div class="form-section__title">Сведения о проверке</div>
+
+        <div class="grid-4">
+          <label class="field">
+            <span class="field__label">Форма проверки</span>
+            <select class="input" name="checkFormType">
+              <option value="" selected>—</option>
+              <option>плановая документарная</option>
+              <option>плановая выездная</option>
+              <option>внеплановая документарная</option>
+              <option>внеплановая выездная</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field__label">№ приказа МЗЧО</span>
+            <input class="input" name="mzOrderNo" inputmode="numeric" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Дата приказа МЗЧО</span>
+            <input class="input" name="mzOrderDate" type="date" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">№ проверки</span>
+            <input class="input" name="checkNo" inputmode="numeric" />
+          </label>
+        </div>
+
+        <div class="grid-4">
+          <label class="field">
+            <span class="field__label">Начало проверки</span>
+            <input class="input" name="startDate" type="date" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Окончание проверки</span>
+            <input class="input" name="endDate" type="date" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">Дней</span>
+            <input class="input" name="days" inputmode="numeric" readonly />
+          </label>
+
+          <label class="field">
+            <span class="field__label">№ приказа, письма</span>
+            <div class="grid-2-tight">
+              <input class="input" name="letterNoLeft" placeholder="о/д" />
+              <input class="input" name="letterNoRight" placeholder="" />
+            </div>
+          </label>
+        </div>
+
+        <div class="grid-2">
+          <label class="field">
+            <span class="field__label">Дата приказа, письма</span>
+            <input class="input" name="letterDate" type="date" />
+          </label>
+
+          <label class="field">
+            <span class="field__label">По адресу(ам) без индекса</span>
+            <textarea class="input input--multiline" name="addressNoIndex" placeholder="Адрес 1, Адрес 2"></textarea>
+          </label>
+        </div>
+
+        <label class="field">
+          <span class="field__label">Представитель (ФИО, должность)</span>
+          <textarea class="input input--multiline" name="representative" placeholder="ФИО, должность (через запятую)"></textarea>
+        </label>
+
+        <div class="grid-2 actions-right">
+          <label class="field">
+            <span class="field__label">Уполномоченные на проведение проверки</span>
+            <div class="field-with-btn field-with-btn--multiline">
+              <textarea class="input input--multiline" id="authorizedPeople" name="inspectors"></textarea>
+              <button class="btn" type="button" id="authorizedPickBtn">Выбрать</button>
+            </div>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Подписи уполномоченных в акте</span>
+            <div class="field-with-btn field-with-btn--multiline">
+              <textarea class="input input--multiline" id="signaturesPeople" name="signs"></textarea>
+              <button class="btn" type="button" id="signaturesPickBtn">Выбрать</button>
+            </div>
+          </label>
+        </div>
+      </section>
+
+      <div class="modal__foot">
+        <button class="btn btn--primary" type="submit">СОХРАНИТЬ</button>
+        <button class="btn" type="button" id="checkModalCancel">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>

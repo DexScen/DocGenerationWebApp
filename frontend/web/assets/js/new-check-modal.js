@@ -7,9 +7,28 @@
   const form = document.getElementById("checkForm");
   const openBtn = document.getElementById("btnNewCheck");
   const titleEl = document.getElementById("checkModalTitle");
+  const postalSameCheckbox = document.getElementById("postalSame");
+  const bossRoleInput = form?.elements?.["bossRole"] || null;
+  const bossRoleDatalist = document.getElementById("bossRoleOptions");
   let createdByValue = "";
 
   if (!backdrop) return;
+
+  function lockScroll() {
+    if (window.ModalScroll?.lock) {
+      window.ModalScroll.lock();
+    } else {
+      document.documentElement.classList.add("is-dialog-open");
+    }
+  }
+
+  function unlockScroll() {
+    if (window.ModalScroll?.unlock) {
+      window.ModalScroll.unlock();
+    } else {
+      document.documentElement.classList.remove("is-dialog-open");
+    }
+  }
 
   function openModal(options = {}){
     const { mode = "create", data = null } = options || {};
@@ -18,23 +37,9 @@
       else alert("Войдите в систему, чтобы создать или редактировать проверку.");
       return;
     }
-    // #TODO(BACKEND): при открытии модала для edit нужно получить lock и (опционально) свежие данные.
-    //   locking acquire:
-    //     endpoint: POST /inspections/{id}/lock
-    //     body: { "mode": "edit", "ttl_seconds": 60 }
-    //     response 200: { "lock_id": "...", "expires_at": "...", "owner": { "id": "...", "name": "..." }, "mode": "edit" }
-    //     response 409: { "locked": true, "owner": { "id": "...", "name": "..." }, "expires_at": "...", "mode": "edit" }
-    //   data refresh (optional):
-    //     endpoint: GET /inspections/{id}
-    //     headers: { "Authorization": "Bearer <token>" }
-    //     response 200: { ...inspection }
-    //   where: openModal({ mode: "edit" })
-    //   auth: требуется токен/куки
-    //   errors: 401/403 -> показать "Нет доступа"; 409/423 -> "Проверка занята"; 500 -> "Ошибка открытия".
-    //   local: сохранить lock_id/expires_at в form.dataset для heartbeat/submit/delete/download.
     backdrop.hidden = false;
     backdrop.style.zIndex = "1000";
-    document.documentElement.classList.add("is-dialog-open");
+    lockScroll();
     if (mode === "edit" && data) {
       fillForm(data);
       updateCreatorField(data.created_by);
@@ -48,27 +53,12 @@
     }
   }
 
-  // #TODO(BACKEND): запуск heartbeat для активной блокировки проверки в режиме edit/view.
-  //   endpoint: POST /inspections/{id}/lock/heartbeat
-  //   headers/body: { "lock_id": "..." }
-  //   response 200: { "expires_at": "..." }
-  //   where: после успешного acquire lock (setInterval ~30s + visibilitychange)
-  //   auth: требуется токен/куки
-  //   errors: 409/410 -> закрыть форму/перевести в read-only и уведомить пользователя.
-
   function closeModal(){
-    // #TODO(BACKEND): release lock при закрытии модала или уходе со страницы.
-    //   endpoint: DELETE /inspections/{id}/lock
-    //   headers/body: { "lock_id": "..." }
-    //   where: closeModal() + window.beforeunload/visibilitychange
-    //   auth: требуется токен/куки
-    //   errors: 401 -> игнорировать; 410 -> lock уже потерян.
     backdrop.hidden = true;
     backdrop.style.removeProperty("z-index");
-    document.documentElement.classList.remove("is-dialog-open");
+    unlockScroll();
   }
 
-  // чтобы не открывалось сразу при загрузке
   closeModal();
 
   if (openBtn) openBtn.addEventListener("click", openModal);
@@ -83,7 +73,7 @@
     if (e.key === "Escape" && !backdrop.hidden) closeModal();
   });
 
-  // ===== People modal wiring =====
+  // ===== Modal =====
   const authorizedInput = document.getElementById("authorizedPeople");
   const signaturesInput = document.getElementById("signaturesPeople");
   const authorizedBtn = document.getElementById("authorizedPickBtn");
@@ -106,6 +96,20 @@
   function writeListToField(el, list){
     if (!el) return;
     el.value = list.join(", ");
+  }
+
+  function formatListValue(value) {
+    if (Array.isArray(value)) {
+      return value.join(", ");
+    }
+    return value || "";
+  }
+
+  function parseListFromName(formRef, name) {
+    if (!formRef) return [];
+    const field = formRef.elements[name];
+    if (!field) return [];
+    return parseListFromField(field);
   }
 
   if (authorizedBtn) {
@@ -132,7 +136,7 @@
     });
   }
 
-  // ===== Helpers for JSON building =====
+  // ===== JSON =====
   function getFieldValue(formRef, name) {
     const field = formRef.elements[name];
     if (!field) return "";
@@ -155,10 +159,138 @@
     form.reset();
     if (authorizedInput) authorizedInput.value = "";
     if (signaturesInput) signaturesInput.value = "";
+    if (postalSameCheckbox) {
+      postalSameCheckbox.checked = false;
+      setPostalSameState(false);
+    }
   }
 
   function normalizeSpace(s) {
     return (s || "").replace(/\s+/g, " ").trim();
+  }
+
+  const bossRoleStorageKey = "bossRoleOptionsExtra";
+  const bossRoleDefaults = bossRoleDatalist
+    ? Array.from(bossRoleDatalist.options).map((option) => option.value).filter(Boolean)
+    : [];
+
+  function loadBossRoleExtras() {
+    if (!window.localStorage) return [];
+    try {
+      const raw = window.localStorage.getItem(bossRoleStorageKey);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function saveBossRoleExtras(list) {
+    if (!window.localStorage) return;
+    window.localStorage.setItem(bossRoleStorageKey, JSON.stringify(list));
+  }
+
+  function collectBossRoleValues() {
+    if (!bossRoleDatalist) return [];
+    return Array.from(bossRoleDatalist.options).map((option) => option.value).filter(Boolean);
+  }
+
+  function appendBossRoleOption(value) {
+    if (!bossRoleDatalist) return;
+    const option = document.createElement("option");
+    option.value = value;
+    bossRoleDatalist.appendChild(option);
+  }
+
+  function syncBossRoleExtras() {
+    const existing = new Set(bossRoleDefaults.map((item) => item.toLowerCase()));
+    const extras = loadBossRoleExtras().filter(Boolean).filter((value) => {
+      const normalized = normalizeSpace(value);
+      if (!normalized) return false;
+      const key = normalized.toLowerCase();
+      if (existing.has(key)) return false;
+      existing.add(key);
+      return true;
+    });
+    extras.forEach((value) => appendBossRoleOption(value));
+    if (extras.length) saveBossRoleExtras(extras);
+  }
+
+  function ensureBossRoleOption(rawValue) {
+    const normalized = normalizeSpace(rawValue);
+    if (!normalized) return;
+    const existing = new Set(collectBossRoleValues().map((value) => value.toLowerCase()));
+    if (existing.has(normalized.toLowerCase())) return;
+    const extras = loadBossRoleExtras();
+    extras.push(normalized);
+    saveBossRoleExtras(extras);
+    appendBossRoleOption(normalized);
+  }
+
+  async function fetchOrganizationByOgrn(ogrn) {
+    if (!window.Api?.request) {
+      throw new Error("Не настроен клиент API.");
+    }
+    return await window.Api.request("/dadata/organization", {
+      method: "POST",
+      body: JSON.stringify({ ogrn })
+    });
+  }
+
+  async function handleOgrnAutofill(rawValue) {
+    const ogrnValue = normalizeSpace(rawValue);
+    if (!/^\d{13}$/.test(ogrnValue)) return;
+    try {
+      const data = await fetchOrganizationByOgrn(ogrnValue);
+      if (!data) return;
+      setFieldValue(form, "orgName", data.name ?? "");
+      setFieldValue(form, "orgShortName", data.shortName ?? "");
+      setFieldValue(form, "legal_adress", data.legalAddress ?? "");
+      setFieldValue(form, "bossRole", data.bossRole ?? "");
+      setFieldValue(form, "bossNamePatronymic", data.bossNamePatronymic ?? "");
+      setFieldValue(form, "bossLastName", data.bossLastName ?? "");
+    } catch (error) {
+      console.warn("Не удалось получить данные по ОГРН", error);
+      if (window.AppDialog?.openDialog) {
+        window.AppDialog.openDialog("Не удалось получить данные по ОГРН. Проверьте номер и попробуйте снова.");
+      }
+    }
+  }
+
+  function parseDateValue(value) {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  }
+
+  function calculateDays(startValue, endValue) {
+    const start = parseDateValue(startValue);
+    const end = parseDateValue(endValue);
+    if (!start || !end) return "";
+    if (end < start) return "";
+    const msInDay = 24 * 60 * 60 * 1000;
+    const diff = Math.round((end - start) / msInDay);
+    return String(diff + 1);
+  }
+
+  function updateDaysField() {
+    if (!form) return;
+    const startValue = getFieldValue(form, "startDate");
+    const endValue = getFieldValue(form, "endDate");
+    const daysValue = calculateDays(startValue, endValue);
+    setFieldValue(form, "days", daysValue);
+  }
+
+  function setPostalSameState(isChecked) {
+    if (!form) return;
+    const postalField = form.elements["email"];
+    const legalField = form.elements["legal_adress"];
+    if (!(postalField instanceof HTMLInputElement) || !(legalField instanceof HTMLInputElement)) return;
+    postalField.readOnly = Boolean(isChecked);
+    if (isChecked) {
+      postalField.value = legalField.value;
+    }
   }
 
   function fillForm(data) {
@@ -182,14 +314,21 @@
     setFieldValue(form, "letterNoLeft", data.inspection?.letter?.numberLeft);
     setFieldValue(form, "letterNoRight", data.inspection?.letter?.numberRight);
     setFieldValue(form, "letterDate", data.inspection?.letter?.date);
-    setFieldValue(form, "addressNoIndex", data.inspection?.addressNoIndex);
-    setFieldValue(form, "representative", data.inspection?.representative);
+    setFieldValue(form, "addressNoIndex", formatListValue(data.inspection?.addressNoIndex));
+    setFieldValue(form, "representative", formatListValue(data.inspection?.representative));
     if (authorizedInput) {
       authorizedInput.value = (data.inspection?.inspectors || []).join(", ");
     }
     if (signaturesInput) {
       signaturesInput.value = (data.inspection?.signatures || []).join(", ");
     }
+    if (postalSameCheckbox) {
+      const legalValue = getFieldValue(form, "legal_adress");
+      const postalValue = getFieldValue(form, "email");
+      postalSameCheckbox.checked = Boolean(legalValue && legalValue === postalValue);
+      setPostalSameState(postalSameCheckbox.checked);
+    }
+    updateDaysField();
   }
 
   function getAuthenticatedUser() {
@@ -202,7 +341,6 @@
   }
 
   function buildInspectionPayload(formRef) {
-    // здесь ты можешь потом поменять структуру под бэкенд как угодно
     return {
       created_by: normalizeSpace(createdByValue),
       organization: {
@@ -239,25 +377,61 @@
           numberRight: normalizeSpace(getFieldValue(formRef, "letterNoRight")),
           date: normalizeSpace(getFieldValue(formRef, "letterDate"))
         },
-        addressNoIndex: normalizeSpace(getFieldValue(formRef, "addressNoIndex")),
-        representative: normalizeSpace(getFieldValue(formRef, "representative")),
+        addressNoIndex: parseListFromName(formRef, "addressNoIndex"),
+        representative: parseListFromName(formRef, "representative"),
 
-        // ВАЖНО: массивы (а не строка)
         inspectors: parseListFromField(authorizedInput),
         signatures: parseListFromField(signaturesInput)
       }
     };
   }
 
+  function hasDigits(value) {
+    return /\d/.test(value || "");
+  }
+
+  function ensureNoDigits(value, label) {
+    if (!value) return null;
+    if (hasDigits(value)) {
+      return `Поле «${label}» не должно содержать цифры.`;
+    }
+    return null;
+  }
+
+  function validateDates() {
+    const startValue = getFieldValue(form, "startDate");
+    const endValue = getFieldValue(form, "endDate");
+    const start = parseDateValue(startValue);
+    const end = parseDateValue(endValue);
+    if ((startValue && !start) || (endValue && !end)) {
+      return "Проверьте корректность дат проверки.";
+    }
+    if (start && end && end < start) {
+      return "Дата окончания проверки не может быть раньше даты начала.";
+    }
+    return null;
+  }
+
+  function isUniqueCheckNumber(numberValue, currentId) {
+    if (!numberValue) return true;
+    const normalized = normalizeSpace(numberValue);
+    const list = window.ChecksStore?.load?.() || [];
+    return !list.some((item) => {
+      if (currentId && item?.id === currentId) return false;
+      return normalizeSpace(item?.inspection?.number) === normalized;
+    });
+  }
+
   function hasAnyInspectionData(payload) {
-    // Простая проверка "заполнено ли что-то кроме названия"
-    // можешь ужесточить потом.
     const i = payload.inspection;
     return (
       i.formType || i.mzOrder.number || i.mzOrder.date || i.number ||
       i.period.startDate || i.period.endDate || i.period.days ||
       i.letter.numberLeft || i.letter.numberRight || i.letter.date ||
-      i.addressNoIndex || i.representative || (i.inspectors && i.inspectors.length) || (i.signatures && i.signatures.length)
+      (i.addressNoIndex && i.addressNoIndex.length) ||
+      (i.representative && i.representative.length) ||
+      (i.inspectors && i.inspectors.length) ||
+      (i.signatures && i.signatures.length)
     );
   }
 
@@ -279,17 +453,34 @@
         return;
       }
 
-      const payload = buildInspectionPayload(form);
-      // #TODO(BACKEND): создание/обновление проверки на сервере.
-      //   endpoint (create): POST /inspections
-      //   endpoint (update): PUT /inspections/{id}
-      //   headers: { "Authorization": "Bearer <token>", "X-Lock-Id": "<lock_id>" }
-      //   request: { ...payload }
-      //   response 201/200: { "id": 123, ...payload }
-      //   where: submit handler (после валидности)
-      //   auth: требуется токен/куки
-      //   errors: 401/403 -> "Нет доступа"; 409/423 -> "Нет валидной блокировки"; 500 -> "Ошибка сохранения".
+      const ogrnValue = getFieldValue(form, "ogrn");
+      if (ogrnValue && !/^\d{13}$/.test(ogrnValue)) {
+        if (window.AppDialog?.openDialog) window.AppDialog.openDialog("ОГРН должен содержать 13 цифр.");
+        else alert("ОГРН должен содержать 13 цифр.");
+        return;
+      }
 
+      const fioErrors = [
+        ensureNoDigits(getFieldValue(form, "bossNamePatronymic"), "Имя Отчество"),
+        ensureNoDigits(getFieldValue(form, "bossLastName"), "Фамилия"),
+        ensureNoDigits(getFieldValue(form, "bossLastNameTo"), "Фамилия (кому?)"),
+        ensureNoDigits(getFieldValue(form, "representative"), "Представитель (ФИО, должность)")
+      ].filter(Boolean);
+      if (fioErrors.length) {
+        const message = fioErrors[0];
+        if (window.AppDialog?.openDialog) window.AppDialog.openDialog(message);
+        else alert(message);
+        return;
+      }
+
+      const dateError = validateDates();
+      if (dateError) {
+        if (window.AppDialog?.openDialog) window.AppDialog.openDialog(dateError);
+        else alert(dateError);
+        return;
+      }
+
+      const payload = buildInspectionPayload(form);
       if (!hasAnyInspectionData(payload)) {
         if (window.AppDialog?.openDialog) window.AppDialog.openDialog("Заполните данные проверки.");
         else alert("Заполните данные проверки.");
@@ -297,6 +488,11 @@
       }
 
       const existingId = form.dataset.editId ? Number(form.dataset.editId) : null;
+      if (!isUniqueCheckNumber(payload.inspection?.number, existingId)) {
+        if (window.AppDialog?.openDialog) window.AppDialog.openDialog("Номер проверки должен быть уникальным.");
+        else alert("Номер проверки должен быть уникальным.");
+        return;
+      }
       try {
         if (existingId) {
           await window.ChecksStore?.update?.(existingId, payload);
@@ -311,13 +507,69 @@
         return;
       }
 
-      // #TODO(BACKEND): при успешном сохранении release lock.
-      //   endpoint: DELETE /inspections/{id}/lock
-      //   headers/body: { "lock_id": "..." }
-      //   where: после успешного POST/PUT
-      //   auth: требуется токен/куки
-      //   errors: 401 -> игнорировать; 410 -> lock уже потерян.
       closeModal();
+    });
+  }
+
+  if (postalSameCheckbox && form) {
+    postalSameCheckbox.addEventListener("change", () => {
+      setPostalSameState(postalSameCheckbox.checked);
+    });
+    const legalField = form.elements["legal_adress"];
+    if (legalField instanceof HTMLInputElement) {
+      legalField.addEventListener("input", () => {
+        if (postalSameCheckbox.checked) {
+          setPostalSameState(true);
+        }
+      });
+    }
+  }
+
+  if (form) {
+    const startField = form.elements["startDate"];
+    const endField = form.elements["endDate"];
+    if (startField instanceof HTMLInputElement) {
+      startField.addEventListener("change", updateDaysField);
+      startField.addEventListener("input", updateDaysField);
+    }
+    if (endField instanceof HTMLInputElement) {
+      endField.addEventListener("change", updateDaysField);
+      endField.addEventListener("input", updateDaysField);
+    }
+  }
+
+  if (form) {
+    const ogrnField = form.elements["ogrn"];
+    if (ogrnField instanceof HTMLInputElement) {
+      ogrnField.addEventListener("blur", () => {
+        handleOgrnAutofill(ogrnField.value);
+      });
+    }
+  }
+
+  if (bossRoleInput && bossRoleDatalist) {
+    syncBossRoleExtras();
+    let bossRoleFocusValue = "";
+
+    bossRoleInput.addEventListener("focus", () => {
+      const currentValue = normalizeSpace(bossRoleInput.value);
+      if (!currentValue) return;
+      bossRoleFocusValue = currentValue;
+      bossRoleInput.value = "";
+      bossRoleInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    bossRoleInput.addEventListener("blur", () => {
+      const currentValue = normalizeSpace(bossRoleInput.value);
+      if (!currentValue && bossRoleFocusValue) {
+        bossRoleInput.value = bossRoleFocusValue;
+      }
+      ensureBossRoleOption(bossRoleInput.value);
+      bossRoleFocusValue = "";
+    });
+
+    bossRoleInput.addEventListener("change", () => {
+      ensureBossRoleOption(bossRoleInput.value);
     });
   }
 

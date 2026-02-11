@@ -1,0 +1,459 @@
+  <div class="app">
+    <!-- Sidebar -->    
+    <aside class="sidebar" aria-label="Навигация">
+      <div class="sidebar__brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <div class="brand__title">Проверки</div>
+          <div class="brand__subtitle">web-прототип</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <a class="nav__item" href="#/checks" data-route="checks">
+          <span class="nav__dot" aria-hidden="true"></span>
+          Проверки
+        </a>
+
+        <a class="nav__item" href="#/verification-areas" data-route="verification-areas">
+          <span class="nav__dot" aria-hidden="true"></span>
+          Области проверки
+        </a>
+
+        <a class="nav__item" href="#/employees" data-route="employees">
+          <span class="nav__dot" aria-hidden="true"></span>
+          Сотрудники
+        </a>
+
+        <a class="nav__item" href="#/admin" data-route="admin">
+          <span class="nav__dot" aria-hidden="true"></span>
+          Админ-панель
+        </a>
+      </nav>
+
+      <div class="sidebar__footer">
+        <div class="muted">v0.1 • UI scaffold</div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar__left">
+          <h1 class="page-title" id="pageTitle">Главная</h1>
+          <div class="page-subtitle" id="pageSubtitle">Быстрые действия</div>
+        </div>
+
+        <div class="topbar__right">
+          <div class="user-chip" id="userChip" hidden>
+            <span class="user-chip__label">Пользователь:</span>
+            <span class="user-chip__name" id="userName">—</span>
+          </div>
+          <button class="btn btn--ghost" id="btnAuth" type="button">Вход</button>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <!-- HOME -->
+        <div class="page" id="page-home" data-page="home">
+          <div class="home-layout">
+            <div class="home-actions">
+              <button class="action-tile" id="btnNewCheck" type="button">
+                <div class="action-tile__title">Новая проверка</div>
+                <div class="action-tile__desc">Создать новую запись проверки</div>
+              </button>
+
+              <button class="action-tile" id="btnChecks" type="button">
+                <div class="action-tile__title">Проверки</div>
+                <div class="action-tile__desc">Открыть список проверок</div>
+              </button>
+            </div>
+
+            <div class="home-canvas" aria-label="Пустое рабочее поле">
+            </div>
+          </div>
+        </div>
+
+        <!-- CHECKS -->
+        <div class="page" id="page-checks" data-page="checks" hidden>
+          <div class="panel">
+            <div class="panel__title">Список проверок</div>
+            <div class="panel__body">
+              <div class="inline">
+                <button class="btn btn--primary" type="button" id="btnNewCheckFromList">Новая проверка</button>
+                <div class="hint">Данные загружаются с сервера.</div>
+              </div>
+              <div class="filters" id="checksFilters">
+                <div class="filters__row">
+                  <label class="field">
+                    <span class="field__label">Год</span>
+                    <input class="input" id="checksYearFilter" inputmode="numeric" placeholder="2026" />
+                  </label>
+                  <label class="field">
+                    <span class="field__label">ОГРН</span>
+                    <input class="input" id="checksOgrnFilter" inputmode="numeric" placeholder="1234567890123" />
+                  </label>
+                </div>
+              </div>
+              <div class="pagination" id="checksPaginationTop" hidden>
+                <div class="pagination__group">
+                  <div class="pagination__summary" data-pagination-summary></div>
+                </div>
+                <div class="pagination__group">
+                  <button class="btn btn--ghost" type="button" data-page-action="prev">Назад</button>
+                  <div class="pagination__page">
+                    <span class="pagination__label">Страница</span>
+                    <input class="input pagination__input pagination__input--page" type="number" min="1" data-page-input />
+                    <span class="pagination__total" data-page-total></span>
+                  </div>
+                  <button class="btn btn--ghost" type="button" data-page-action="next">Вперед</button>
+                </div>
+                <div class="pagination__group pagination__group--size">
+                  <span class="pagination__label">На странице</span>
+                  <select class="input pagination__select" id="checksPageSizeSelect">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="custom">Другое</option>
+                  </select>
+                  <input class="input pagination__input pagination__input--size" type="number" min="1" id="checksPageSizeCustom" placeholder="Другое" />
+                </div>
+              </div>
+              <div class="list" id="checksList"></div>
+              <div class="list__empty" id="checksEmpty" hidden>Проверок пока нет.</div>
+              <div class="pagination" id="checksPaginationBottom" hidden>
+                <div class="pagination__group">
+                  <div class="pagination__summary" data-pagination-summary></div>
+                </div>
+                <div class="pagination__group">
+                  <button class="btn btn--ghost" type="button" data-page-action="prev">Назад</button>
+                  <div class="pagination__page">
+                    <span class="pagination__label">Страница</span>
+                    <input class="input pagination__input pagination__input--page" type="number" min="1" data-page-input />
+                    <span class="pagination__total" data-page-total></span>
+                  </div>
+                  <button class="btn btn--ghost" type="button" data-page-action="next">Вперед</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VERIFICATION AREAS -->
+        <div class="page" id="page-verification-areas" data-page="verification-areas" hidden>
+          <div class="panel">
+            <div class="panel__title">Области проверки</div>
+            <div class="panel__body">
+              <div class="verification-areas-table-wrap">
+                <table class="verification-areas-table" aria-label="Таблица областей проверки">
+                  <thead>
+                    <tr>
+                      <th>Уровень 1</th>
+                      <th>Уровень 2</th>
+                      <th>Уровень 3</th>
+                      <th>Уровень 4 / шаблоны</th>
+                    </tr>
+                  </thead>
+                  <tbody id="verificationAreasTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      
+        <!-- ADMIN -->
+        <div class="page" id="page-admin" data-page="admin" hidden>
+          <div class="admin-panel" data-admin-panel="users">
+            <div class="admin-layout">
+              <div class="admin-section">
+                <div class="admin-section__title">Пользователи</div>
+                <div class="admin-grid-2 admin-grid-2--wide">
+                  <div class="admin-stack">
+                    <section class="panel">
+                      <div class="panel__title">Добавление пользователя</div>
+                      <div class="panel__body">
+                        <label class="field">
+                          <span class="field__label">ФИО</span>
+                          <input class="input" id="adminUserName" placeholder="Иванов Иван Иванович" />
+                        </label>
+                        <label class="field">
+                          <span class="field__label">Логин</span>
+                          <input class="input" id="adminUserLogin" placeholder="ivanov" />
+                        </label>
+                        <label class="field">
+                          <span class="field__label">Пароль</span>
+                          <input class="input" id="adminUserPassword" placeholder="Пароль для входа" />
+                        </label>
+                        <label class="field">
+                          <span class="field__label">Роль</span>
+                          <select class="input" id="adminUserRole">
+                            <option value="user" selected>Пользователь</option>
+                            <option value="admin">Администратор</option>
+                            <option value="no_access">Нет прав</option>
+                          </select>
+                        </label>
+                        <button class="btn btn--primary" id="adminAddUserBtn" type="button">Добавить</button>
+                        <div class="hint">Логины и пароли выдаются в админке.</div>
+                      </div>
+                    </section>
+                    <section class="panel">
+                      <div class="panel__title">Назначение роли</div>
+                      <div class="panel__body">
+                        <div class="field">
+                          <span class="field__label">Пользователь</span>
+                          <select class="input" id="adminUserSelect"></select>
+                        </div>
+                        <div class="field">
+                          <span class="field__label">Роль</span>
+                          <select class="input" id="adminRoleSelect">
+                            <option value="user">Пользователь</option>
+                            <option value="admin">Администратор</option>
+                            <option value="no_access">Нет прав</option>
+                          </select>
+                        </div>
+                        <button class="btn" id="adminAssignRoleBtn" type="button">Выдать права</button>
+                        <div class="hint">Доступы обновляются для выбранного пользователя.</div>
+                      </div>
+                    </section>
+                  </div>
+                  <section class="panel">
+                    <div class="panel__title">Список пользователей</div>
+                    <div class="panel__body">
+                      <div class="list" id="adminUserList"></div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+
+              <div class="admin-section">
+                <div class="admin-section__title">Сотрудники</div>
+                <div class="admin-grid-2 admin-grid-2--wide">
+                  <section class="panel">
+                    <div class="panel__title">Добавление сотрудника</div>
+                    <div class="panel__body">
+                      <label class="field">
+                        <span class="field__label">ФИО</span>
+                        <input class="input" id="adminEmployeeName" placeholder="Иванов Иван Иванович" />
+                      </label>
+                      <button class="btn btn--primary" id="adminAddEmployeeBtn" type="button">Добавить</button>
+                      <div class="hint">Сотрудник — отдельная сущность от пользователей.</div>
+                    </div>
+                  </section>
+
+                  <section class="panel">
+                    <div class="panel__title">Список сотрудников</div>
+                    <div class="panel__body">
+                      <div class="list" id="adminEmployeeList"></div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+
+        <!-- EMPLOYEES -->
+        <div class="page" id="page-employees" data-page="employees" hidden>
+          <div class="panel">
+            <div class="panel__title">Сотрудники</div>
+            <div class="panel__body">
+              <div class="list" id="employeesList"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="dialog-backdrop" id="dialogBackdrop" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+      <div class="dialog__head">
+        <div class="dialog__title" id="dialogTitle">Сообщение</div>
+        <button class="icon-btn" id="dialogClose" type="button" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="dialog__body" id="dialogBody"></div>
+      <div class="dialog__actions">
+        <button class="btn btn--primary" id="dialogOk" type="button">ОК</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="authModalBackdrop" hidden>
+    <div class="modal modal--sm" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+      <div class="modal__head">
+        <div class="modal__title" id="authModalTitle">Вход</div>
+        <button class="icon-btn" id="authModalClose" type="button" aria-label="Закрыть">✕</button>
+      </div>
+      <form class="modal__body" id="authForm">
+        <label class="field">
+          <span class="field__label">Логин</span>
+          <input class="input" id="authLogin" autocomplete="username" />
+        </label>
+        <label class="field">
+          <span class="field__label">Пароль</span>
+          <input class="input" id="authPassword" type="password" autocomplete="current-password" />
+        </label>
+        <div class="hint" id="authStatus" role="status" aria-live="polite"></div>
+        <div class="modal__foot">
+          <button class="btn btn--primary" type="submit">Войти</button>
+          <button class="btn" id="authModalCancel" type="button">Отмена</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="downloadModalBackdrop" hidden>
+    <div class="modal modal--sm" role="dialog" aria-modal="true" aria-labelledby="downloadModalTitle">
+      <div class="modal__head">
+        <div class="modal__title" id="downloadModalTitle">Скачать</div>
+        <button class="icon-btn" id="downloadModalClose" type="button" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="modal__body">
+        <div class="download-options">
+          <button class="btn btn--primary" id="downloadPdfBtn" type="button">PDF</button>
+          <button class="btn" id="downloadDocxBtn" type="button">DOCX</button>
+        </div>
+        <div class="hint" id="downloadModalHint">Выберите формат документа.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="verificationAreaNameBackdrop" hidden>
+    <div class="modal verification-area-name-modal" role="dialog" aria-modal="true" aria-labelledby="verificationAreaNameTitle">
+      <div class="modal__head">
+        <div class="modal__title" id="verificationAreaNameTitle">Добавить значение</div>
+        <button class="icon-btn" id="verificationAreaNameClose" type="button" aria-label="Закрыть">✕</button>
+      </div>
+      <form class="modal__body verification-area-name-modal__body" id="verificationAreaNameForm">
+        <label class="field">
+          <span class="field__label" id="verificationAreaNameLabel">Название</span>
+          <textarea
+            class="input input--multiline"
+            id="verificationAreaNameInput"
+            placeholder="Введите название"
+            maxlength="250"
+            rows="5"
+          ></textarea>
+        </label>
+        <div class="hint">Пустые значения не сохраняются.</div>
+        <div class="modal__foot">
+          <button class="btn btn--primary" type="submit">Сохранить</button>
+          <button class="btn" id="verificationAreaNameCancel" type="button">Отмена</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="verificationAreaTemplateBackdrop" hidden>
+    <div class="modal verification-area-name-modal" role="dialog" aria-modal="true" aria-labelledby="verificationAreaTemplateTitle">
+      <div class="modal__head">
+        <div class="modal__title" id="verificationAreaTemplateTitle">Добавить шаблон</div>
+        <button class="icon-btn" id="verificationAreaTemplateClose" type="button" aria-label="Закрыть">✕</button>
+      </div>
+      <form class="modal__body verification-area-name-modal__body" id="verificationAreaTemplateForm">
+        <label class="field">
+          <span class="field__label">Название шаблона</span>
+          <textarea
+            class="input input--multiline"
+            id="verificationAreaTemplateInput"
+            placeholder="Введите название"
+            maxlength="250"
+            rows="5"
+          ></textarea>
+        </label>
+        <label class="field">
+          <span class="field__label">Тэг шаблона</span>
+          <div class="verification-areas-table__tag-buttons" id="verificationAreaTemplateTags"></div>
+        </label>
+        <div class="hint">Пустые значения не сохраняются. Выберите один тэг.</div>
+        <div class="modal__foot">
+          <button class="btn btn--primary" id="verificationAreaTemplateSubmit" type="submit">Добавить</button>
+          <button class="btn" id="verificationAreaTemplateCancel" type="button">Отмена</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="inspection-backdrop" id="inspectionBackdrop" hidden>
+    <div class="inspection-window" role="dialog" aria-modal="true" aria-labelledby="inspectionTitle">
+      <div class="inspection-window__titlebar">
+        <div class="inspection-window__titlebar-left">
+          <div class="inspection-window__title" id="inspectionTitle">Проверка соблюдения Постановления Правительства № 687</div>
+          <div class="inspection-window__subtitle">Форма заполнения пунктов проверки</div>
+        </div>
+        <div class="inspection-window__titlebar-right">
+          <button class="inspection-window__btn-secondary" id="inspectionClearFields" type="button">Очистить поля</button>
+          <button class="inspection-window__close" id="inspectionClose" type="button" aria-label="Закрыть">✕</button>
+        </div>
+      </div>
+
+      <div class="inspection-window__content">
+        <aside class="inspection-window__sidebar" aria-label="Области проверки">
+          <div class="inspection-window__sidebar-head">
+            <div class="inspection-window__sidebar-title">Области проверки</div>
+          </div>
+
+          <div class="inspection-window__sidebar-list">
+            <div class="inspection-window__areas-tree" id="inspectionAreasTree"></div>
+          </div>
+
+          <div class="inspection-window__sidebar-foot">
+            <span id="inspectionAreasCount">0 областей</span>
+          </div>
+        </aside>
+
+        <main class="inspection-window__main">
+          <div class="inspection-window__scroll" id="inspectionScrollArea">
+            <section class="inspection-window__group" data-section="p4">
+              <div class="inspection-window__group-head">
+                <div class="inspection-window__group-legend">Назначение лица</div>
+              </div>
+
+              <div class="inspection-window__note">
+                <div class="inspection-window__note-title">Наличие приказа</div>
+              </div>
+
+              <div class="inspection-window__grid3">
+                <div class="inspection-window__field">
+                  <div class="inspection-window__field-label">Общая часть</div>
+                  <textarea class="inspection-window__field-box" id="p4_result" placeholder="Введите результаты проверки..." spellcheck="false"></textarea>
+                </div>
+
+                <div class="inspection-window__field">
+                  <div class="inspection-window__field-label">Недостатки</div>
+                  <textarea class="inspection-window__field-box" id="p4_violation" placeholder="Опишите выявленное нарушение..." spellcheck="false"></textarea>
+                </div>
+
+                <div class="inspection-window__field">
+                  <div class="inspection-window__field-label">Нарушения</div>
+                  <textarea class="inspection-window__field-box" id="p4_reco" placeholder="Укажите рекомендации..." spellcheck="false"></textarea>
+                </div>
+              </div>
+
+              <div class="inspection-window__field inspection-window__field--full">
+                <div class="inspection-window__field-label">Сведения об устранении нарушений</div>
+                <textarea
+                  class="inspection-window__field-box"
+                  id="p4_fix_info"
+                  placeholder="Укажите сведения об устранении нарушений..."
+                  spellcheck="false"
+                ></textarea>
+              </div>
+            </section>
+          </div>
+
+          <div class="inspection-window__footer">
+            <div class="inspection-window__footer-left">
+              <span class="inspection-window__dot" aria-hidden="true"></span>
+              <span id="inspectionStatus">Черновик хранится локально (localStorage)</span>
+            </div>
+            <button class="inspection-window__btn-save" id="inspectionSave" type="button">СОХРАНИТЬ</button>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
